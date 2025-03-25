@@ -2,9 +2,10 @@ package main
 
 import (
 	"fmt"
-	"log"
 	"net"
 	"os"
+
+	log "github.com/sirupsen/logrus"
 
 	"github.com/danroc/wol-repeater/wol"
 )
@@ -21,15 +22,17 @@ func main() {
 
 	conn, err := net.ListenUDP("udp", &net.UDPAddr{Port: wol.DefaultPort})
 	if err != nil {
-		log.Fatal(err)
+		log.Fatalf("Cannot start server: %v\n", err)
 	}
 	defer conn.Close()
+
+	log.Info("Listening for WOL packets")
 
 	buffer := make([]byte, MaxPacketSize)
 	for {
 		n, remote, err := conn.ReadFromUDP(buffer)
 		if err != nil {
-			log.Fatal(err)
+			log.Errorf("Cannot read WOL packet: %v", err)
 		}
 
 		mac := wol.ParsePacket(buffer[:n])
