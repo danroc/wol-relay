@@ -35,9 +35,12 @@ func main() {
 			log.Errorf("Cannot read WOL packet: %v", err)
 		}
 
-		mac := wol.ParsePacket(buffer[:n])
-		if mac != nil {
-			log.Printf("Received WOL packet from %s for MAC %s\n", remote, mac.String())
+		mac, err := wol.ParsePacket(buffer[:n])
+		if err != nil {
+			log.Warnf("Invalid WOL packet from %s: %v\n", remote, err)
+			continue
 		}
+
+		log.Infof("Received WOL packet from %s for MAC %s\n", remote, mac.String())
 	}
 }

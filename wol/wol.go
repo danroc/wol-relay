@@ -2,6 +2,7 @@ package wol
 
 import (
 	"bytes"
+	"errors"
 	"net"
 )
 
@@ -13,11 +14,19 @@ const (
 	MACRepeat   = 16
 )
 
+var (
+	ErrInvalidMAC    = errors.New("invalid MAC-48 address")
+	ErrInvalidSize   = errors.New("invalid Wake-on-LAN packet size")
+	ErrInvalidHeader = errors.New("invalid Wake-on-LAN packet header")
+)
+
+var Header = []byte{0xff, 0xff, 0xff, 0xff, 0xff, 0xff}
+
 // ParsePacket parses a Wake-on-LAN packet and returns the MAC address
-// contained in it. If the packet is invalid, it returns nil.
-func ParsePacket(packet []byte) net.HardwareAddr {
+// contained in it.
+func ParsePacket(packet []byte) (net.HardwareAddr, error) {
 	if len(packet) != PacketSize {
-		return nil
+		return nil, ErrInvalidSize
 	}
 
 	buffer := bytes.NewBuffer(packet)
@@ -25,25 +34,24 @@ func ParsePacket(packet []byte) net.HardwareAddr {
 
 	// Validate the header, it must be the 0xFF byte repeated 6 times.
 	if len(header) != HeaderSize {
-		return nil
+		return nil, ErrInvalidHeader
 	}
-	for _, b := range header {
-		if b != 0xff {
-			return nil
-		}
+	for !bytes.Equal(header, Header) {
+		return nil, ErrInvalidHeader
 	}
 
 	// Extract the MAC address from the packet. It should be the same MAC
 	// address repeated 16 times.
 	mac := buffer.Next(MACSize)
 	if len(mac) != MACSize {
-		return nil
+		return nil, ErrInvalidMAC
 	}
 	for range MACRepeat - 1 {
 		if !bytes.Equal(mac, buffer.Next(MACSize)) {
-			return nil
+			return nil, ErrInvalidMAC
 		}
 	}
 
-	return mac
+	return mac, nil
+}
 }
