@@ -11,7 +11,7 @@ import (
 )
 
 const (
-	MaxPacketSize = 65536
+	MaxPacketSize = 1024
 )
 
 func main() {
