@@ -54,4 +54,20 @@ func ParsePacket(packet []byte) (net.HardwareAddr, error) {
 
 	return mac, nil
 }
+
+// BuildPacket builds a Wake-on-LAN packet with the given MAC address. Only
+// MAC-48 addresses are supported.
+func BuildPacket(mac net.HardwareAddr) ([]byte, error) {
+	if len(mac) != MACSize {
+		return nil, ErrInvalidMAC
+	}
+
+	packet := make([]byte, 0, PacketSize)
+	buffer := bytes.NewBuffer(packet)
+	buffer.Write(Header)
+	for range MACRepeat {
+		buffer.Write(mac)
+	}
+
+	return packet, nil
 }
