@@ -15,7 +15,7 @@ const (
 )
 
 func main() {
-	// We need ate least three arguments: the program name and two interfaces.
+	// We need at least three arguments: the program name and two interfaces.
 	if len(os.Args) < 3 {
 		fmt.Printf("Usage: %s INTERFACES...\n", os.Args[0])
 		os.Exit(1)
