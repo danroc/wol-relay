@@ -69,5 +69,5 @@ func BuildPacket(mac net.HardwareAddr) ([]byte, error) {
 		buffer.Write(mac)
 	}
 
-	return packet, nil
+	return buffer.Bytes(), nil
 }
