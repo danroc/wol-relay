@@ -10,10 +10,10 @@ ARG CGO_ENABLED=0
 RUN go build
 
 # -----------------------------------------------------------------------------
-# Main image
+# Run
 
 FROM scratch
 
 COPY --from=builder /app/wol-relay /app/wol-relay
 
-ENTRYPOINT ["/app/wol-relay"]
+ENTRYPOINT [ "/app/wol-relay" ]
