@@ -5,7 +5,7 @@ import (
 	"net"
 	"os"
 
-	"github.com/danroc/wol-repeater/wol"
+	"github.com/danroc/wol-relay/wol"
 	log "github.com/sirupsen/logrus"
 )
 

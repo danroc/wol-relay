@@ -1,4 +1,4 @@
-module github.com/danroc/wol-repeater
+module github.com/danroc/wol-relay
 
 go 1.24.0
 
