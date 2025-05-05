@@ -124,7 +124,7 @@ func main() {
 		}
 
 		// We check if remote IP matches one of the interfaces to avoid
-		// infinite loop when sending WOL packets.
+		// an infinite loop when sending WOL packets.
 		if isIPOneOf(remote.IP, networks) {
 			continue
 		}
@@ -136,6 +136,9 @@ func main() {
 		}
 
 		for _, network := range networks {
+			// Don't send the WOL packet to the same network as the remote IP
+			// to avoid broadcasting the packet a second time on the original
+			// network.
 			if !network.Contains(remote.IP) {
 				if err := sendWOLPacket(network, mac); err != nil {
 					log.Errorf(
