@@ -100,17 +100,17 @@ func isIPOneOf(ip net.IP, networks []net.IPNet) bool {
 
 func main() {
 	if len(os.Args) < 2 {
-		log.Fatalf("Usage: %s INTERFACES...\n", os.Args[0])
+		log.Fatalf("Usage: %s INTERFACES...", os.Args[0])
 	}
 
 	networks, err := collectNetworks(os.Args[1:])
 	if err != nil || len(networks) == 0 {
-		log.Fatalf("No valid network interfaces found: %v\n", err)
+		log.Fatalf("No valid network interfaces found: %v", err)
 	}
 
 	conn, err := net.ListenUDP("udp", &net.UDPAddr{Port: wol.DefaultPort})
 	if err != nil {
-		log.Fatalf("Cannot start server: %v\n", err)
+		log.Fatalf("Cannot start server: %v", err)
 	}
 	defer conn.Close()
 
@@ -131,7 +131,7 @@ func main() {
 
 		mac, err := wol.ParsePacket(buffer[:n])
 		if err != nil {
-			log.Warnf("Invalid WOL packet received from %s: %v\n", remote, err)
+			log.Warnf("Invalid WOL packet received from %s: %v", remote, err)
 			continue
 		}
 
