@@ -13,8 +13,8 @@ const (
 	MaxPacketSize = 1024
 )
 
-// ToBroadcastIP calculates the broadcast address for a given IPv4 network.
-func ToBroadcastIP(network net.IPNet) (net.IP, error) {
+// toBroadcastIP calculates the broadcast address for a given IPv4 network.
+func toBroadcastIP(network net.IPNet) (net.IP, error) {
 	var (
 		ip   = network.IP.To4()
 		mask = network.Mask
@@ -32,9 +32,9 @@ func ToBroadcastIP(network net.IPNet) (net.IP, error) {
 	), nil
 }
 
-// CollectNetworks collects all IPv4 network for the given list of network
+// collectNetworks collects all IPv4 network for the given list of network
 // interface names.
-func CollectNetworks(interfaces []string) ([]net.IPNet, error) {
+func collectNetworks(interfaces []string) ([]net.IPNet, error) {
 	var networks []net.IPNet
 	for _, name := range interfaces {
 		iface, err := net.InterfaceByName(name)
@@ -58,8 +58,8 @@ func CollectNetworks(interfaces []string) ([]net.IPNet, error) {
 	return networks, nil
 }
 
-// SendUDP sends a UDP packet to the given IP and port.
-func SendUDP(ip net.IP, port int, packet []byte) (int, error) {
+// sendUDPPacket sends a UDP packet to the given IP and port.
+func sendUDPPacket(ip net.IP, port int, packet []byte) (int, error) {
 	conn, err := net.DialUDP("udp", nil, &net.UDPAddr{
 		IP:   ip,
 		Port: port,
@@ -72,10 +72,10 @@ func SendUDP(ip net.IP, port int, packet []byte) (int, error) {
 	return conn.Write(packet)
 }
 
-// SendWOLPacket sends a Wake-on-LAN packet to the given network and MAC
+// sendWOLPacket sends a Wake-on-LAN packet to the given network and MAC
 // address.
-func SendWOLPacket(network net.IPNet, mac net.HardwareAddr) error {
-	broadcastIP, err := ToBroadcastIP(network)
+func sendWOLPacket(network net.IPNet, mac net.HardwareAddr) error {
+	broadcastIP, err := toBroadcastIP(network)
 	if err != nil {
 		return err
 	}
@@ -85,11 +85,11 @@ func SendWOLPacket(network net.IPNet, mac net.HardwareAddr) error {
 		return err
 	}
 
-	_, err = SendUDP(broadcastIP, wol.DefaultPort, packet)
+	_, err = sendUDPPacket(broadcastIP, wol.DefaultPort, packet)
 	return err
 }
 
-func IsIPOneOf(ip net.IP, networks []net.IPNet) bool {
+func isIPOneOf(ip net.IP, networks []net.IPNet) bool {
 	for _, network := range networks {
 		if network.IP.Equal(ip) {
 			return true
@@ -103,7 +103,7 @@ func main() {
 		log.Fatalf("Usage: %s INTERFACES...\n", os.Args[0])
 	}
 
-	networks, err := CollectNetworks(os.Args[1:])
+	networks, err := collectNetworks(os.Args[1:])
 	if err != nil || len(networks) == 0 {
 		log.Fatalf("No valid network interfaces found: %v\n", err)
 	}
@@ -125,7 +125,7 @@ func main() {
 
 		// We check if remote IP matches one of the interfaces to avoid
 		// infinite loop when sending WOL packets.
-		if IsIPOneOf(remote.IP, networks) {
+		if isIPOneOf(remote.IP, networks) {
 			continue
 		}
 
@@ -137,21 +137,13 @@ func main() {
 
 		for _, network := range networks {
 			if !network.Contains(remote.IP) {
-				log.Infof(
-					"Sending WOL packet from %s to %s (MAC: %s)\n",
-					remote.String(),
-					network.String(),
-					mac.String(),
-				)
-
-				if err := SendWOLPacket(network, mac); err != nil {
+				if err := sendWOLPacket(network, mac); err != nil {
 					log.Errorf(
-						"Failed to send WOL packet from %s to %s (MAC: %s): %v\n",
-						remote.String(),
-						network.String(),
-						mac.String(),
-						err,
+						"Failed to send WOL packet from %s to %s (MAC: %s): %v",
+						remote, network, mac, err,
 					)
+				} else {
+					log.Infof("Sent WOL packet from %s to %s (MAC: %s)", remote, network, mac)
 				}
 			}
 		}
