@@ -140,10 +140,13 @@ func main() {
 				if err := sendWOLPacket(network, mac); err != nil {
 					log.Errorf(
 						"Failed to send WOL packet from %s to %s (MAC: %s): %v",
-						remote, network, mac, err,
+						remote.IP, network, mac, err,
 					)
 				} else {
-					log.Infof("Sent WOL packet from %s to %s (MAC: %s)", remote, network, mac)
+					log.Infof(
+						"Sent WOL packet from %s to %s (MAC: %s)",
+						remote.IP, network, mac,
+					)
 				}
 			}
 		}
