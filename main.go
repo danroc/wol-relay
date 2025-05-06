@@ -89,9 +89,21 @@ func sendWOLPacket(network net.IPNet, mac net.HardwareAddr) error {
 	return err
 }
 
+// isIPOneOf checks if the given IP address matches the IP address of any
+// network in the provided list.
 func isIPOneOf(ip net.IP, networks []net.IPNet) bool {
 	for _, network := range networks {
 		if network.IP.Equal(ip) {
+			return true
+		}
+	}
+	return false
+}
+
+// isIPInAny checks if the given IP address is in any of the provided networks.
+func isIPInAny(ip net.IP, networks []net.IPNet) bool {
+	for _, network := range networks {
+		if network.Contains(ip) {
 			return true
 		}
 	}
@@ -121,6 +133,11 @@ func main() {
 		n, remote, err := conn.ReadFromUDP(buffer)
 		if err != nil {
 			log.Errorf("Cannot read WOL packet: %v", err)
+		}
+
+		// Ignore packets from networks that we are not monitoring.
+		if !isIPInAny(remote.IP, networks) {
+			continue
 		}
 
 		// We check if remote IP matches one of the interfaces to avoid
