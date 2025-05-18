@@ -33,9 +33,6 @@ func ParsePacket(packet []byte) (net.HardwareAddr, error) {
 	header := buffer.Next(HeaderSize)
 
 	// Validate the header, it must be the 0xFF byte repeated 6 times.
-	if len(header) != HeaderSize {
-		return nil, ErrInvalidHeader
-	}
 	for !bytes.Equal(header, Header) {
 		return nil, ErrInvalidHeader
 	}
@@ -43,9 +40,6 @@ func ParsePacket(packet []byte) (net.HardwareAddr, error) {
 	// Extract the MAC address from the packet. It should be the same MAC
 	// address repeated 16 times.
 	mac := buffer.Next(MACSize)
-	if len(mac) != MACSize {
-		return nil, ErrInvalidMAC
-	}
 	for range MACRepeat - 1 {
 		if !bytes.Equal(mac, buffer.Next(MACSize)) {
 			return nil, ErrInvalidMAC
