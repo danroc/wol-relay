@@ -1,11 +1,22 @@
 # Wake-on-LAN Relay
 
-Relay Wake-on-LAN packets between networks.
+Relay Wake-on-LAN (WOL) packets between multiple networks or interfaces. This
+is useful for environments where devices are on separate subnets and need to be
+woken up remotely.
+
+## Features
+
+- Listens for WOL packets on specified interfaces
+- Relays valid WOL packets to all other monitored networks
+- Prevents packet loops and duplicate broadcasts
+- Lightweight and easy to deploy (single binary or Docker image)
 
 ## Usage
 
-In a Docker compose file, you can add the following service to relay WOL
-packets between the `eno1` and `eno2` network interfaces:
+### Docker Compose
+
+Add the following service to your `compose.yaml` to relay WOL packets between
+the `eno1` and `eno2` network interfaces:
 
 ```yaml
 services:
@@ -17,6 +28,42 @@ services:
     security_opt:
       - no-new-privileges:true
     restart: unless-stopped
-
-  # Other services...
 ```
+
+> **Note:** `network_mode: host` is required for the container to access host
+> network interfaces and broadcast packets.
+
+### Standalone
+
+You can also run the relay directly on your host:
+
+```sh
+go build
+sudo ./wol-relay eno1 eno2
+```
+
+Replace `eno1` and `eno2` with the names of your network interfaces.
+
+## Requirements
+
+- Go 1.24+ (for building from source)
+- Sufficient privileges to access network interfaces and send broadcast packets
+
+## Example
+
+To wake a device on another subnet, send a WOL packet to the relay's IP on port
+`9`. The relay will forward the packet to all other configured networks.
+
+## Development
+
+- Run tests:
+
+  ```sh
+  go test ./...
+  ```
+
+- Build Docker image:
+
+  ```sh
+  docker build -t wol-relay .
+  ```
