@@ -49,11 +49,6 @@ Replace `eno1` and `eno2` with the names of your network interfaces.
 - Go 1.24+ (for building from source)
 - Sufficient privileges to access network interfaces and send broadcast packets
 
-## Example
-
-To wake a device on another subnet, send a WOL packet to the relay's IP on port
-`9`. The relay will forward the packet to all other configured networks.
-
 ## Development
 
 - Run tests:
