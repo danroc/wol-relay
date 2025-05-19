@@ -7,9 +7,12 @@ and this project adheres to [Semantic Versioning](https://semver.org/spec/v2.0.0
 
 ## [Unreleased]
 
-### Changed
+### Uncategorized
 
-- Update golang docker tag to v1.24.3 ([#5](https://github.com/danroc/wol-relay/pull/5))
+- chore: remove unreachable conditions ([#7](https://github.com/danroc/wol-relay/pull/7))
+- test: add unit tests to `wol` package ([#6](https://github.com/danroc/wol-relay/pull/6))
+- chore: add a CHANGELOG
+- chore(deps): update golang docker tag to v1.24.3 ([#5](https://github.com/danroc/wol-relay/pull/5))
 
 ## [0.1.2] - 2025-05-06
 
@@ -19,15 +22,15 @@ and this project adheres to [Semantic Versioning](https://semver.org/spec/v2.0.0
 - Add Renovate configuration
 - Add renovate.json ([#1](https://github.com/danroc/wol-relay/pull/1))
 
-### Fixed
-
-- Check if remote is in a monitored network
-
 ### Changed
 
 - Update module golang.org/x/sys to v0.33.0 ([#4](https://github.com/danroc/wol-relay/pull/4))
 - Improve comments to clarify WOL packet sending logic
 - Update module golang.org/x/sys to v0.32.0 ([#3](https://github.com/danroc/wol-relay/pull/3))
+
+### Fixed
+
+- Check if remote is in a monitored network
 
 ## [0.1.1] - 2025-05-05
 
