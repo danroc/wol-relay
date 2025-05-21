@@ -38,7 +38,10 @@ services:
 You can also run the relay directly on your host:
 
 ```sh
+# Build the binary
 go build
+
+# Run the relay
 sudo ./wol-relay eno1 eno2
 ```
 
