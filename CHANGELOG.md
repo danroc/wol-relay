@@ -7,19 +7,25 @@ and this project adheres to [Semantic Versioning](https://semver.org/spec/v2.0.0
 
 ## [Unreleased]
 
-### Uncategorized
+## [0.1.3] - 2025-06-19
 
-- chore: reduce indentation by handling error first
-- chore(deps): update golang docker tag to v1.24.4 ([#10](https://github.com/danroc/wol-repeater/pull/10))
-- chore: update standalone command comments
-- chore: add a license
-- docs: remove dummy example section from README
-- docs: add features, dev and standalone sections to README ([#9](https://github.com/danroc/wol-repeater/pull/9))
-- chore: update changelog ([#8](https://github.com/danroc/wol-repeater/pull/8))
-- chore: remove unreachable conditions ([#7](https://github.com/danroc/wol-repeater/pull/7))
-- test: add unit tests to `wol` package ([#6](https://github.com/danroc/wol-repeater/pull/6))
-- chore: add a CHANGELOG
-- chore(deps): update golang docker tag to v1.24.3 ([#5](https://github.com/danroc/wol-repeater/pull/5))
+### Added
+
+- Add a license
+- Add features, dev and standalone sections to README ([#9](https://github.com/danroc/wol-repeater/pull/9))
+- Add unit tests to `wol` package ([#6](https://github.com/danroc/wol-repeater/pull/6))
+- Add a CHANGELOG
+
+### Changed
+
+- Update CHANGELOG
+- Reduce indentation by handling error first
+- Update golang docker tag to v1.24.4 ([#10](https://github.com/danroc/wol-repeater/pull/10))
+- Update standalone command comments
+- Remove dummy example section from README
+- Update changelog ([#8](https://github.com/danroc/wol-repeater/pull/8))
+- Remove unreachable conditions ([#7](https://github.com/danroc/wol-repeater/pull/7))
+- Update golang docker tag to v1.24.3 ([#5](https://github.com/danroc/wol-repeater/pull/5))
 
 ## [0.1.2] - 2025-05-06
 
@@ -67,7 +73,8 @@ and this project adheres to [Semantic Versioning](https://semver.org/spec/v2.0.0
 - Remove `main` binary
 - Initial commit
 
-[Unreleased]: https://github.com/danroc/wol-repeater/compare/v0.1.2...HEAD
+[Unreleased]: https://github.com/danroc/wol-repeater/compare/v0.1.3...HEAD
+[0.1.3]: https://github.com/danroc/wol-repeater/compare/v0.1.2...v0.1.3
 [0.1.2]: https://github.com/danroc/wol-repeater/compare/v0.1.1...v0.1.2
 [0.1.1]: https://github.com/danroc/wol-repeater/compare/v0.1.0...v0.1.1
 [0.1.0]: https://github.com/danroc/wol-repeater/releases/tag/v0.1.0
