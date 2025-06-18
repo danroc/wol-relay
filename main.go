@@ -156,18 +156,20 @@ func main() {
 			// Don't send the WOL packet to the same network as the remote IP
 			// to avoid broadcasting the packet a second time on the original
 			// network.
-			if !network.Contains(remote.IP) {
-				if err := sendWOLPacket(network, mac); err != nil {
-					log.Errorf(
-						"Failed to send WOL packet from %s to %s (MAC: %s): %v",
-						remote.IP, network.String(), mac, err,
-					)
-				} else {
-					log.Infof(
-						"Sent WOL packet from %s to %s (MAC: %s)",
-						remote.IP, network.String(), mac,
-					)
-				}
+			if network.Contains(remote.IP) {
+				continue
+			}
+
+			if err := sendWOLPacket(network, mac); err != nil {
+				log.Errorf(
+					"Failed to send WOL packet from %s to %s (MAC: %s): %v",
+					remote.IP, network.String(), mac, err,
+				)
+			} else {
+				log.Infof(
+					"Sent WOL packet from %s to %s (MAC: %s)",
+					remote.IP, network.String(), mac,
+				)
 			}
 		}
 	}
