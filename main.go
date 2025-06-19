@@ -160,6 +160,7 @@ func main() {
 				continue
 			}
 
+			// Send the WOL packet and log the result.
 			if err := sendWOLPacket(network, mac); err != nil {
 				log.Errorf(
 					"Failed to send WOL packet from %s to %s (MAC: %s): %v",
