@@ -7,7 +7,7 @@ WORKDIR /app
 COPY . .
 
 ARG CGO_ENABLED=0
-RUN go build
+RUN go build -ldflags="-s -w"
 
 # -----------------------------------------------------------------------------
 # Run
