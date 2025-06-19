@@ -1,3 +1,5 @@
+// Package main implements a Wake-on-LAN relay that listens for WOL packets
+// on specified network interfaces and relays them to other networks.
 package main
 
 import (
@@ -10,6 +12,7 @@ import (
 )
 
 const (
+	// MaxPacketSize is the size of the buffer used to read WOL packets.
 	MaxPacketSize = 1024
 )
 

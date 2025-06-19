@@ -1,3 +1,4 @@
+// Package wol provides functions to build and parse Wake-on-LAN packets.
 package wol
 
 import (
@@ -6,6 +7,7 @@ import (
 	"net"
 )
 
+// Wake-on-LAN constants.
 const (
 	DefaultPort = 9
 	PacketSize  = 102
@@ -14,12 +16,14 @@ const (
 	MACRepeat   = 16
 )
 
+// Wake-on-LAN errors.
 var (
 	ErrInvalidMAC    = errors.New("invalid MAC-48 address")
 	ErrInvalidSize   = errors.New("invalid Wake-on-LAN packet size")
 	ErrInvalidHeader = errors.New("invalid Wake-on-LAN packet header")
 )
 
+// Header is the fixed header for Wake-on-LAN packets.
 var Header = []byte{0xff, 0xff, 0xff, 0xff, 0xff, 0xff}
 
 // ParsePacket parses a Wake-on-LAN packet and returns the MAC address
