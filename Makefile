@@ -88,7 +88,11 @@ run: ## Run the main program
 
 .PHONY: build
 build: $(DIST_DIR) ## Build the binary
-	go build -ldflags="-s -w" -o $(DIST_DIR)/wol-relay .
+	CGO_ENABLED=0 go build -ldflags="-s -w" -o $(DIST_DIR)/wol-relay .
+
+.PHONY: build-docker
+build-docker: $(DIST_DIR) ## Build the Docker image
+	docker build -t $(DOCKER_IMAGE) .
 
 # =============================================================================
 # @Tests
