@@ -1,1 +1,3 @@
-main
+dist/
+coverage.out
+coverage.xml
