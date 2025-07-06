@@ -170,13 +170,13 @@ func main() {
 			if err := sendWOLPacket(network, mac); err != nil {
 				log.WithFields(log.Fields{
 					"remote":  remote.IP,
-					"network": network.String(),
+					"network": network,
 					"mac":     mac,
 				}).WithError(err).Error("Failed to relay WOL packet")
 			} else {
 				log.WithFields(log.Fields{
 					"remote":  remote.IP,
-					"network": network.String(),
+					"network": network,
 					"mac":     mac,
 				}).Info("WOL packet relayed successfully")
 			}
