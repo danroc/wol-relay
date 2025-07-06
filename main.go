@@ -133,49 +133,49 @@ func main() {
 	log.Info("Listening for WOL packets...")
 
 	for {
-		n, remote, err := conn.ReadFromUDP(buffer)
+		n, source, err := conn.ReadFromUDP(buffer)
 		if err != nil {
 			log.WithError(err).Error("Cannot read WOL packet")
 		}
 
 		// Ignore packets from networks that we are not monitoring.
-		if !isIPInAny(remote.IP, networks) {
+		if !isIPInAny(source.IP, networks) {
 			continue
 		}
 
-		// We check if remote IP matches one of the interfaces to avoid
+		// We check if source IP matches one of the interfaces to avoid
 		// an infinite loop when sending WOL packets.
-		if isIPOneOf(remote.IP, networks) {
+		if isIPOneOf(source.IP, networks) {
 			continue
 		}
 
 		mac, err := wol.ParsePacket(buffer[:n])
 		if err != nil {
 			log.WithFields(log.Fields{
-				"remote": remote.IP,
+				"source": source.IP,
 				"size":   n,
 			}).WithError(err).Error("Failed to parse WOL packet")
 			continue
 		}
 
 		for _, network := range networks {
-			// Don't send the WOL packet to the same network as the remote IP
+			// Don't send the WOL packet to the same network as the source IP
 			// to avoid broadcasting the packet a second time on the original
 			// network.
-			if network.Contains(remote.IP) {
+			if network.Contains(source.IP) {
 				continue
 			}
 
 			// Send the WOL packet and log the result.
 			if err := sendWOLPacket(network, mac); err != nil {
 				log.WithFields(log.Fields{
-					"remote":  remote.IP,
+					"source":  source.IP,
 					"network": network.String(),
 					"mac":     mac,
 				}).WithError(err).Error("Failed to relay WOL packet")
 			} else {
 				log.WithFields(log.Fields{
-					"remote":  remote.IP,
+					"source":  source.IP,
 					"network": network.String(),
 					"mac":     mac,
 				}).Info("WOL packet relayed successfully")
