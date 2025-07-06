@@ -7,6 +7,10 @@ and this project adheres to [Semantic Versioning](https://semver.org/spec/v2.0.0
 
 ## [Unreleased]
 
+### Changed
+
+- Use `WithError` when logging errors
+
 ## [0.1.4] - 2025-07-06
 
 ### Added

@@ -24,7 +24,7 @@ func toBroadcastIP(network net.IPNet) (net.IP, error) {
 	)
 
 	if ip == nil || len(mask) != net.IPv4len {
-		return nil, fmt.Errorf("invalid IPv4 network: %s", network.String())
+		return nil, fmt.Errorf("invalid IPv4 network: %s", network)
 	}
 
 	return net.IPv4(
@@ -135,7 +135,7 @@ func main() {
 	for {
 		n, remote, err := conn.ReadFromUDP(buffer)
 		if err != nil {
-			log.Errorf("Cannot read WOL packet: %v", err)
+			log.WithError(err).Error("Cannot read WOL packet")
 		}
 
 		// Ignore packets from networks that we are not monitoring.
@@ -154,7 +154,7 @@ func main() {
 			log.WithFields(log.Fields{
 				"remote": remote.IP,
 				"size":   n,
-			}).Errorf("Failed to parse WOL packet: %v", err)
+			}).WithError(err).Error("Failed to parse WOL packet")
 			continue
 		}
 
@@ -172,7 +172,7 @@ func main() {
 					"remote":  remote.IP,
 					"network": network.String(),
 					"mac":     mac,
-				}).Errorf("Failed to relay WOL packet: %v", err)
+				}).WithError(err).Error("Failed to relay WOL packet")
 			} else {
 				log.WithFields(log.Fields{
 					"remote":  remote.IP,
