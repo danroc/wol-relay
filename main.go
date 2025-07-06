@@ -24,7 +24,7 @@ func toBroadcastIP(network net.IPNet) (net.IP, error) {
 	)
 
 	if ip == nil || len(mask) != net.IPv4len {
-		return nil, fmt.Errorf("invalid IPv4 network: %s", network)
+		return nil, fmt.Errorf("invalid IPv4 network: %s", network.String())
 	}
 
 	return net.IPv4(
@@ -170,13 +170,13 @@ func main() {
 			if err := sendWOLPacket(network, mac); err != nil {
 				log.WithFields(log.Fields{
 					"remote":  remote.IP,
-					"network": network,
+					"network": network.String(),
 					"mac":     mac,
 				}).WithError(err).Error("Failed to relay WOL packet")
 			} else {
 				log.WithFields(log.Fields{
 					"remote":  remote.IP,
-					"network": network,
+					"network": network.String(),
 					"mac":     mac,
 				}).Info("WOL packet relayed successfully")
 			}
