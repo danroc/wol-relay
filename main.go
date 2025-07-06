@@ -151,7 +151,10 @@ func main() {
 
 		mac, err := wol.ParsePacket(buffer[:n])
 		if err != nil {
-			log.Warnf("Invalid WOL packet received from %s: %v", remote, err)
+			log.WithFields(log.Fields{
+				"remote": remote.IP,
+				"size":   n,
+			}).Errorf("Failed to parse WOL packet: %v", err)
 			continue
 		}
 
@@ -165,15 +168,17 @@ func main() {
 
 			// Send the WOL packet and log the result.
 			if err := sendWOLPacket(network, mac); err != nil {
-				log.Errorf(
-					"Failed to send WOL packet from %s to %s (MAC: %s): %v",
-					remote.IP, network.String(), mac, err,
-				)
+				log.WithFields(log.Fields{
+					"remote":  remote.IP,
+					"network": network.String(),
+					"mac":     mac,
+				}).Errorf("Failed to relay WOL packet: %v", err)
 			} else {
-				log.Infof(
-					"Sent WOL packet from %s to %s (MAC: %s)",
-					remote.IP, network.String(), mac,
-				)
+				log.WithFields(log.Fields{
+					"remote":  remote.IP,
+					"network": network.String(),
+					"mac":     mac,
+				}).Info("WOL packet relayed successfully")
 			}
 		}
 	}
