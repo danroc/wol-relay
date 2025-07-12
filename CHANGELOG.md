@@ -7,6 +7,15 @@ and this project adheres to [Semantic Versioning](https://semver.org/spec/v2.0.0
 
 ## [Unreleased]
 
+## [0.1.9] - 2025-07-12
+
+### Changed
+
+- Improve log field names
+- Update dependencies
+  - Update golang docker tag to v1.24.5 ([#11](https://github.com/danroc/wol-repeater/pull/11))
+  - Update module golang.org/x/sys to v0.34.0 ([#12](https://github.com/danroc/wol-repeater/pull/12))
+
 ## [0.1.8] - 2025-07-06
 
 ### Changed
@@ -115,7 +124,8 @@ and this project adheres to [Semantic Versioning](https://semver.org/spec/v2.0.0
 - Remove `main` binary
 - Initial commit
 
-[Unreleased]: https://github.com/danroc/wol-repeater/compare/v0.1.8...HEAD
+[Unreleased]: https://github.com/danroc/wol-repeater/compare/v0.1.9...HEAD
+[0.1.9]: https://github.com/danroc/wol-repeater/compare/v0.1.8...v0.1.9
 [0.1.8]: https://github.com/danroc/wol-repeater/compare/v0.1.7...v0.1.8
 [0.1.7]: https://github.com/danroc/wol-repeater/compare/v0.1.6...v0.1.7
 [0.1.6]: https://github.com/danroc/wol-repeater/compare/v0.1.5...v0.1.6
