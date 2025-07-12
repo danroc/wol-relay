@@ -16,6 +16,14 @@ const (
 	MaxPacketSize = 1024
 )
 
+// Field names used in log entries.
+const (
+	SourceIPField      = "source_ip"
+	TargetNetworkField = "target_network"
+	TargetMACField     = "target_mac"
+	PacketSizeField    = "packet_size"
+)
+
 // toBroadcastIP calculates the broadcast address for a given IPv4 network.
 func toBroadcastIP(network net.IPNet) (net.IP, error) {
 	var (
@@ -152,8 +160,8 @@ func main() {
 		mac, err := wol.ParsePacket(buffer[:n])
 		if err != nil {
 			log.WithFields(log.Fields{
-				"source": source.IP,
-				"size":   n,
+				SourceIPField:   source.IP,
+				PacketSizeField: n,
 			}).WithError(err).Error("Failed to parse WOL packet")
 			continue
 		}
@@ -169,15 +177,15 @@ func main() {
 			// Send the WOL packet and log the result.
 			if err := sendWOLPacket(network, mac); err != nil {
 				log.WithFields(log.Fields{
-					"source":  source.IP,
-					"network": network.String(),
-					"mac":     mac,
+					SourceIPField:      source.IP,
+					TargetNetworkField: network.String(),
+					TargetMACField:     mac,
 				}).WithError(err).Error("Failed to relay WOL packet")
 			} else {
 				log.WithFields(log.Fields{
-					"source":  source.IP,
-					"network": network.String(),
-					"mac":     mac,
+					SourceIPField:      source.IP,
+					TargetNetworkField: network.String(),
+					TargetMACField:     mac,
 				}).Info("WOL packet relayed successfully")
 			}
 		}
