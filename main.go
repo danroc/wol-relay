@@ -144,6 +144,7 @@ func main() {
 		n, source, err := conn.ReadFromUDP(buffer)
 		if err != nil {
 			log.WithError(err).Error("Cannot read WOL packet")
+			continue
 		}
 
 		// Ignore packets from networks that we are not monitoring.
