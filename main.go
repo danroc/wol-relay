@@ -4,11 +4,14 @@ package main
 
 import (
 	"fmt"
+	"io"
 	"net"
 	"os"
 
 	"github.com/danroc/wol-relay/wol"
-	log "github.com/sirupsen/logrus"
+	"github.com/mattn/go-isatty"
+	"github.com/rs/zerolog"
+	"github.com/rs/zerolog/log"
 )
 
 const (
@@ -121,29 +124,43 @@ func isIPInAny(ip net.IP, networks []net.IPNet) bool {
 	return false
 }
 
+// setupLogger configures the global logger to write to stdout. If stdout is a
+// TTY, it uses console format; otherwise, it uses JSON format.
+func setupLogger() {
+	var output io.Writer = os.Stdout
+	if isatty.IsTerminal(os.Stdout.Fd()) {
+		output = zerolog.ConsoleWriter{
+			Out: os.Stdout,
+		}
+	}
+	log.Logger = log.Output(output)
+}
+
 func main() {
+	setupLogger()
+
 	if len(os.Args) < 2 {
-		log.Fatalf("Usage: %s INTERFACES...", os.Args[0])
+		log.Fatal().Msgf("Usage: %s INTERFACES...", os.Args[0])
 	}
 
 	networks, err := collectNetworks(os.Args[1:])
 	if err != nil || len(networks) == 0 {
-		log.Fatalf("No valid network interfaces found: %v", err)
+		log.Fatal().Err(err).Msg("No valid network interfaces found")
 	}
 
 	conn, err := net.ListenUDP("udp", &net.UDPAddr{Port: wol.DefaultPort})
 	if err != nil {
-		log.Fatalf("Cannot start server: %v", err)
+		log.Fatal().Err(err).Msg("Cannot start server")
 	}
 	defer conn.Close()
 
 	buffer := make([]byte, MaxPacketSize)
-	log.Info("Listening for WOL packets...")
+	log.Info().Msg("Listening for WOL packets...")
 
 	for {
 		n, source, err := conn.ReadFromUDP(buffer)
 		if err != nil {
-			log.WithError(err).Error("Cannot read WOL packet")
+			log.Error().Err(err).Msg("Cannot read WOL packet")
 			continue
 		}
 
@@ -160,10 +177,11 @@ func main() {
 
 		mac, err := wol.ParsePacket(buffer[:n])
 		if err != nil {
-			log.WithFields(log.Fields{
-				SourceIPField:   source.IP,
-				PacketSizeField: n,
-			}).WithError(err).Error("Failed to parse WOL packet")
+			log.Error().
+				Err(err).
+				Str(SourceIPField, source.IP.String()).
+				Int(PacketSizeField, n).
+				Msg("Failed to parse WOL packet")
 			continue
 		}
 
@@ -177,17 +195,18 @@ func main() {
 
 			// Send the WOL packet and log the result.
 			if err := sendWOLPacket(network, mac); err != nil {
-				log.WithFields(log.Fields{
-					SourceIPField:      source.IP,
-					TargetNetworkField: network.String(),
-					TargetMACField:     mac,
-				}).WithError(err).Error("Failed to relay WOL packet")
+				log.Error().
+					Err(err).
+					Str(SourceIPField, source.IP.String()).
+					Str(TargetNetworkField, network.String()).
+					Str(TargetMACField, mac.String()).
+					Msg("Failed to relay WOL packet")
 			} else {
-				log.WithFields(log.Fields{
-					SourceIPField:      source.IP,
-					TargetNetworkField: network.String(),
-					TargetMACField:     mac,
-				}).Info("WOL packet relayed successfully")
+				log.Info().
+					Str(SourceIPField, source.IP.String()).
+					Str(TargetNetworkField, network.String()).
+					Str(TargetMACField, mac.String()).
+					Msg("WOL packet relayed successfully")
 			}
 		}
 	}
