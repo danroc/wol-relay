@@ -82,7 +82,6 @@ func sendUDPPacket(ip net.IP, port int, packet []byte) (int, error) {
 		return 0, err
 	}
 	defer conn.Close()
-
 	return conn.Write(packet)
 }
 
