@@ -7,6 +7,26 @@ and this project adheres to [Semantic Versioning](https://semver.org/spec/v2.0.0
 
 ## [Unreleased]
 
+## [0.1.12] - 2025-12-21
+
+### Changed
+
+- Simplify logging ([cdd7955](https://github.com/danroc/wol-relay/commit/cdd7955), [c55b4e0](https://github.com/danroc/wol-relay/commit/c55b4e0))
+- Replace logging library ([3bbd2b2](https://github.com/danroc/wol-relay/commit/3bbd2b2))
+- Update dependencies
+  - Update zerolog deps ([52afec1](https://github.com/danroc/wol-relay/commit/52afec1))
+  - Update golang:1.25.5 docker digest to 36b4f45 ([#33](https://github.com/danroc/wol-relay/pull/33))
+  - Update golang:1.25.5 docker digest to a22b2e6 ([#32](https://github.com/danroc/wol-relay/pull/32))
+  - Update golang:1.25.5 docker digest to 0ece421 ([#31](https://github.com/danroc/wol-relay/pull/31))
+  - Update golang:1.25.5 docker digest to 68ee6df ([#30](https://github.com/danroc/wol-relay/pull/30))
+  - Update module golang.org/x/sys to v0.39.0 ([#29](https://github.com/danroc/wol-relay/pull/29))
+  - Update actions/checkout digest to 8e8c483 ([#27](https://github.com/danroc/wol-relay/pull/27))
+  - Update golang docker tag to v1.25.5 ([#28](https://github.com/danroc/wol-relay/pull/28))
+  - Update docker/metadata-action digest to c299e40 ([#26](https://github.com/danroc/wol-relay/pull/26))
+  - Pin dependencies ([#25](https://github.com/danroc/wol-relay/pull/25))
+  - Use Renovate best practices ([64e4c10](https://github.com/danroc/wol-relay/commit/64e4c10))
+  - Update actions/checkout action to v6 ([#24](https://github.com/danroc/wol-relay/pull/24))
+
 ## [0.1.11] - 2025-11-11
 
 ### Changed
@@ -143,7 +163,8 @@ and this project adheres to [Semantic Versioning](https://semver.org/spec/v2.0.0
 - Use logrus as logger ([8739a5b](https://github.com/danroc/wol-repeater/commit/8739a5b))
 - Remove `main` binary ([a9dc4e4](https://github.com/danroc/wol-repeater/commit/a9dc4e4))
 
-[Unreleased]: https://github.com/danroc/wol-relay/compare/v0.1.11...HEAD
+[Unreleased]: https://github.com/danroc/wol-relay/compare/v0.1.12...HEAD
+[0.1.12]: https://github.com/danroc/wol-relay/compare/v0.1.11...v0.1.12
 [0.1.11]: https://github.com/danroc/wol-relay/compare/v0.1.10...v0.1.11
 [0.1.10]: https://github.com/danroc/wol-relay/compare/v0.1.9...v0.1.10
 [0.1.9]: https://github.com/danroc/wol-relay/compare/v0.1.8...v0.1.9
