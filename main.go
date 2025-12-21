@@ -1,5 +1,5 @@
-// Package main implements a Wake-on-LAN relay that listens for WOL packets
-// on specified network interfaces and relays them to other networks.
+// Package main implements a Wake-on-LAN relay that listens for WOL packets on
+// specified network interfaces and relays them to other networks.
 package main
 
 import (
@@ -17,14 +17,6 @@ import (
 const (
 	// MaxPacketSize is the size of the buffer used to read WOL packets.
 	MaxPacketSize = 1024
-)
-
-// Field names used in log entries.
-const (
-	SourceIPField      = "source_ip"
-	TargetNetworkField = "target_network"
-	TargetMACField     = "target_mac"
-	PacketSizeField    = "packet_size"
 )
 
 // toBroadcastIP calculates the broadcast address for a given IPv4 network.
@@ -176,10 +168,9 @@ func main() {
 
 		mac, err := wol.ParsePacket(buffer[:n])
 		if err != nil {
-			log.Error().
-				Err(err).
-				Str(SourceIPField, source.IP.String()).
-				Int(PacketSizeField, n).
+			log.Error().Err(err).
+				Str("source_ip", source.IP.String()).
+				Int("packet_size", n).
 				Msg("Failed to parse WOL packet")
 			continue
 		}
@@ -193,19 +184,16 @@ func main() {
 			}
 
 			// Send the WOL packet and log the result.
+			logger := log.With().
+				Str("source_ip", source.IP.String()).
+				Str("target_network", network.String()).
+				Str("target_mac", mac.String()).
+				Logger()
+
 			if err := sendWOLPacket(network, mac); err != nil {
-				log.Error().
-					Err(err).
-					Str(SourceIPField, source.IP.String()).
-					Str(TargetNetworkField, network.String()).
-					Str(TargetMACField, mac.String()).
-					Msg("Failed to relay WOL packet")
+				logger.Error().Err(err).Msg("Failed to relay WOL packet")
 			} else {
-				log.Info().
-					Str(SourceIPField, source.IP.String()).
-					Str(TargetNetworkField, network.String()).
-					Str(TargetMACField, mac.String()).
-					Msg("WOL packet relayed successfully")
+				logger.Info().Msg("WOL packet relayed successfully")
 			}
 		}
 	}
