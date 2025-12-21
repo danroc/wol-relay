@@ -19,6 +19,14 @@ const (
 	MaxPacketSize = 1024
 )
 
+// Field names for structured logging.
+const (
+	FieldSourceIP      = "source_ip"
+	FieldTargetNetwork = "target_network"
+	FieldTargetMAC     = "target_mac"
+	FieldPacketSize    = "packet_size"
+)
+
 // toBroadcastIP calculates the broadcast address for a given IPv4 network.
 func toBroadcastIP(network net.IPNet) (net.IP, error) {
 	var (
@@ -169,8 +177,8 @@ func main() {
 		mac, err := wol.ParsePacket(buffer[:n])
 		if err != nil {
 			log.Error().Err(err).
-				Str("source_ip", source.IP.String()).
-				Int("packet_size", n).
+				Str(FieldSourceIP, source.IP.String()).
+				Int(FieldPacketSize, n).
 				Msg("Failed to parse WOL packet")
 			continue
 		}
@@ -185,9 +193,9 @@ func main() {
 
 			// Send the WOL packet and log the result.
 			logger := log.With().
-				Str("source_ip", source.IP.String()).
-				Str("target_network", network.String()).
-				Str("target_mac", mac.String()).
+				Str(FieldSourceIP, source.IP.String()).
+				Str(FieldTargetNetwork, network.String()).
+				Str(FieldTargetMAC, mac.String()).
 				Logger()
 
 			if err := sendWOLPacket(network, mac); err != nil {
