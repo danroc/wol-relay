@@ -1,7 +1,7 @@
 # -----------------------------------------------------------------------------
 # Builder
 
-FROM golang:1.25.6@sha256:0c87ea6991c06552ca5f516e3aeb434056bac3b674f32f612691692668e57074 AS builder
+FROM golang:1.25.7@sha256:cc737435e2742bd6da3b7d575623968683609a3d2e0695f9d85bee84071c08e6 AS builder
 
 WORKDIR /app
 COPY . .
