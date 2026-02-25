@@ -27,25 +27,6 @@ const (
 	FieldPacketSize    = "packet_size"
 )
 
-// toBroadcastIP calculates the broadcast address for a given IPv4 network.
-func toBroadcastIP(network net.IPNet) (net.IP, error) {
-	var (
-		ip   = network.IP.To4()
-		mask = network.Mask
-	)
-
-	if ip == nil || len(mask) != net.IPv4len {
-		return nil, fmt.Errorf("invalid IPv4 network: %s", network.String())
-	}
-
-	return net.IPv4(
-		ip[0]|^mask[0],
-		ip[1]|^mask[1],
-		ip[2]|^mask[2],
-		ip[3]|^mask[3],
-	), nil
-}
-
 // collectNetworks collects all IPv4 network for the given list of network
 // interface names.
 func collectNetworks(interfaces []string) ([]net.IPNet, error) {
@@ -72,34 +53,23 @@ func collectNetworks(interfaces []string) ([]net.IPNet, error) {
 	return networks, nil
 }
 
-// sendUDPPacket sends a UDP packet to the given IP and port.
-func sendUDPPacket(ip net.IP, port int, packet []byte) (int, error) {
-	conn, err := net.DialUDP("udp", nil, &net.UDPAddr{
-		IP:   ip,
-		Port: port,
-	})
-	if err != nil {
-		return 0, err
-	}
-	defer conn.Close()
-	return conn.Write(packet)
-}
+// toBroadcastIP calculates the broadcast address for a given IPv4 network.
+func toBroadcastIP(network net.IPNet) (net.IP, error) {
+	var (
+		ip   = network.IP.To4()
+		mask = network.Mask
+	)
 
-// sendWOLPacket sends a Wake-on-LAN packet to the given network and MAC
-// address.
-func sendWOLPacket(network net.IPNet, mac net.HardwareAddr) error {
-	broadcastIP, err := toBroadcastIP(network)
-	if err != nil {
-		return err
+	if ip == nil || len(mask) != net.IPv4len {
+		return nil, fmt.Errorf("invalid IPv4 network: %s", network.String())
 	}
 
-	packet, err := wol.BuildPacket(mac)
-	if err != nil {
-		return err
-	}
-
-	_, err = sendUDPPacket(broadcastIP, wol.DefaultPort, packet)
-	return err
+	return net.IPv4(
+		ip[0]|^mask[0],
+		ip[1]|^mask[1],
+		ip[2]|^mask[2],
+		ip[3]|^mask[3],
+	), nil
 }
 
 // isIPOneOf checks if the given IP address matches the IP address of any
@@ -121,6 +91,36 @@ func isIPInAny(ip net.IP, networks []net.IPNet) bool {
 		}
 	}
 	return false
+}
+
+// sendWOLPacket sends a Wake-on-LAN packet to the given network and MAC
+// address.
+func sendWOLPacket(network net.IPNet, mac net.HardwareAddr) error {
+	broadcastIP, err := toBroadcastIP(network)
+	if err != nil {
+		return err
+	}
+
+	packet, err := wol.BuildPacket(mac)
+	if err != nil {
+		return err
+	}
+
+	_, err = sendUDPPacket(broadcastIP, wol.DefaultPort, packet)
+	return err
+}
+
+// sendUDPPacket sends a UDP packet to the given IP and port.
+func sendUDPPacket(ip net.IP, port int, packet []byte) (int, error) {
+	conn, err := net.DialUDP("udp", nil, &net.UDPAddr{
+		IP:   ip,
+		Port: port,
+	})
+	if err != nil {
+		return 0, err
+	}
+	defer conn.Close()
+	return conn.Write(packet)
 }
 
 // setupLogger configures the global logger to write to stdout. If stdout is a
