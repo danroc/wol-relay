@@ -8,10 +8,11 @@ import (
 	"net"
 	"os"
 
-	"github.com/danroc/wol-relay/wol"
 	"github.com/mattn/go-isatty"
 	"github.com/rs/zerolog"
 	"github.com/rs/zerolog/log"
+
+	"github.com/danroc/wol-relay/wol"
 )
 
 const (
