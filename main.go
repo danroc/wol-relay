@@ -1,5 +1,5 @@
-// Package main implements a Wake-on-LAN relay that listens for WOL packets on
-// specified network interfaces and relays them to other networks.
+// Package main implements a Wake-on-LAN relay that listens for WOL packets on specified
+// network interfaces and relays them to other networks.
 package main
 
 import (
@@ -28,8 +28,8 @@ const (
 	FieldPacketSize    = "packet_size"
 )
 
-// collectNetworks collects all IPv4 network for the given list of network
-// interface names.
+// collectNetworks collects all IPv4 network for the given list of network interface
+// names.
 func collectNetworks(interfaces []string) ([]net.IPNet, error) {
 	var networks []net.IPNet
 	for _, name := range interfaces {
@@ -73,8 +73,8 @@ func toBroadcastIP(network net.IPNet) (net.IP, error) {
 	), nil
 }
 
-// isIPOneOf checks if the given IP address matches the IP address of any
-// network in the provided list.
+// isIPOneOf checks if the given IP address matches the IP address of any network in the
+// provided list.
 func isIPOneOf(ip net.IP, networks []net.IPNet) bool {
 	for _, network := range networks {
 		if network.IP.Equal(ip) {
@@ -94,8 +94,7 @@ func isIPInAny(ip net.IP, networks []net.IPNet) bool {
 	return false
 }
 
-// sendWOLPacket sends a Wake-on-LAN packet to the given network and MAC
-// address.
+// sendWOLPacket sends a Wake-on-LAN packet to the given network and MAC address.
 func sendWOLPacket(network net.IPNet, mac net.HardwareAddr) error {
 	broadcastIP, err := toBroadcastIP(network)
 	if err != nil {
@@ -124,8 +123,8 @@ func sendUDPPacket(ip net.IP, port int, packet []byte) (int, error) {
 	return conn.Write(packet)
 }
 
-// setupLogger configures the global logger to write to stdout. If stdout is a
-// TTY, it uses console format; otherwise, it uses JSON format.
+// setupLogger configures the global logger to write to stdout. If stdout is a TTY, it
+// uses console format; otherwise, it uses JSON format.
 func setupLogger() {
 	var output io.Writer = os.Stdout
 	if isatty.IsTerminal(os.Stdout.Fd()) {
@@ -169,8 +168,8 @@ func main() {
 			continue
 		}
 
-		// We check if source IP matches one of the interfaces to avoid
-		// an infinite loop when sending WOL packets.
+		// We check if source IP matches one of the interfaces to avoid an infinite loop
+		// when sending WOL packets.
 		if isIPOneOf(source.IP, networks) {
 			continue
 		}
@@ -185,9 +184,8 @@ func main() {
 		}
 
 		for _, network := range networks {
-			// Don't send the WOL packet to the same network as the source IP
-			// to avoid broadcasting the packet a second time on the original
-			// network.
+			// Don't send the WOL packet to the same network as the source IP to avoid
+			// broadcasting the packet a second time on the original network.
 			if network.Contains(source.IP) {
 				continue
 			}
