@@ -119,7 +119,7 @@ func sendUDPPacket(ip net.IP, port int, packet []byte) (int, error) {
 	if err != nil {
 		return 0, err
 	}
-	defer conn.Close()
+	defer func() { _ = conn.Close() }()
 	return conn.Write(packet)
 }
 
@@ -151,7 +151,7 @@ func main() {
 	if err != nil {
 		log.Fatal().Err(err).Msg("Cannot start server")
 	}
-	defer conn.Close()
+	defer func() { _ = conn.Close() }()
 
 	buffer := make([]byte, MaxPacketSize)
 	log.Info().Msg("Listening for WOL packets...")
