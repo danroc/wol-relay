@@ -112,7 +112,7 @@ func sendWOLPacket(network net.IPNet, mac net.HardwareAddr) error {
 
 // sendUDPPacket sends a UDP packet to the given IP and port.
 func sendUDPPacket(ip net.IP, port int, packet []byte) (int, error) {
-	conn, err := net.DialUDP("udp", nil, &net.UDPAddr{
+	conn, err := net.DialUDP("udp4", nil, &net.UDPAddr{
 		IP:   ip,
 		Port: port,
 	})
@@ -147,7 +147,7 @@ func main() {
 		log.Fatal().Err(err).Msg("No valid network interfaces found")
 	}
 
-	conn, err := net.ListenUDP("udp", &net.UDPAddr{Port: wol.DefaultPort})
+	conn, err := net.ListenUDP("udp4", &net.UDPAddr{Port: wol.DefaultPort})
 	if err != nil {
 		log.Fatal().Err(err).Msg("Cannot start server")
 	}
