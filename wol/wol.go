@@ -37,7 +37,7 @@ func ParsePacket(packet []byte) (net.HardwareAddr, error) {
 	header := buffer.Next(HeaderSize)
 
 	// Validate the header, it must be the 0xFF byte repeated 6 times.
-	for !bytes.Equal(header, Header) {
+	if !bytes.Equal(header, Header) {
 		return nil, ErrInvalidHeader
 	}
 
@@ -61,11 +61,10 @@ func BuildPacket(mac net.HardwareAddr) ([]byte, error) {
 	}
 
 	packet := make([]byte, 0, PacketSize)
-	buffer := bytes.NewBuffer(packet)
-	buffer.Write(Header)
+	packet = append(packet, Header...)
 	for range MACRepeat {
-		buffer.Write(mac)
+		packet = append(packet, mac...)
 	}
 
-	return buffer.Bytes(), nil
+	return packet, nil
 }

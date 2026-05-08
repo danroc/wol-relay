@@ -44,10 +44,8 @@ func collectNetworks(interfaces []string) ([]net.IPNet, error) {
 		}
 
 		for _, addr := range addrs {
-			if ipnet, ok := addr.(*net.IPNet); ok {
-				if ipnet.IP.To4() != nil {
-					networks = append(networks, *ipnet)
-				}
+			if ipnet, ok := addr.(*net.IPNet); ok && ipnet.IP.To4() != nil {
+				networks = append(networks, *ipnet)
 			}
 		}
 	}
@@ -143,8 +141,11 @@ func main() {
 	}
 
 	networks, err := collectNetworks(os.Args[1:])
-	if err != nil || len(networks) == 0 {
-		log.Fatal().Err(err).Msg("No valid network interfaces found")
+	if err != nil {
+		log.Fatal().Err(err).Msg("Failed to collect network interfaces")
+	}
+	if len(networks) == 0 {
+		log.Fatal().Msg("No valid network interfaces found")
 	}
 
 	conn, err := net.ListenUDP("udp4", &net.UDPAddr{Port: wol.DefaultPort})
