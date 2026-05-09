@@ -7,6 +7,7 @@ import (
 	"io"
 	"net"
 	"os"
+	"strings"
 
 	"github.com/mattn/go-isatty"
 	"github.com/rs/zerolog"
@@ -28,28 +29,17 @@ const (
 	FieldPacketSize    = "packet_size"
 )
 
-// collectNetworks collects all IPv4 network for the given list of network interface
-// names.
-func collectNetworks(interfaces []string) ([]net.IPNet, error) {
-	var networks []net.IPNet
-	for _, name := range interfaces {
-		iface, err := net.InterfaceByName(name)
-		if err != nil {
-			return nil, err
-		}
-
-		addrs, err := iface.Addrs()
-		if err != nil {
-			return nil, err
-		}
-
-		for _, addr := range addrs {
-			if ipnet, ok := addr.(*net.IPNet); ok && ipnet.IP.To4() != nil {
-				networks = append(networks, *ipnet)
-			}
-		}
+// parseCIDR parses a CIDR string and returns the resulting IPv4 network.
+// It rejects IPv6 addresses and invalid CIDR notation.
+func parseCIDR(s string) (net.IPNet, error) {
+	_, ipnet, err := net.ParseCIDR(s)
+	if err != nil {
+		return net.IPNet{}, fmt.Errorf("invalid CIDR %q: %w", s, err)
 	}
-	return networks, nil
+	if ipnet.IP.To4() == nil {
+		return net.IPNet{}, fmt.Errorf("IPv6 not supported: %q", s)
+	}
+	return *ipnet, nil
 }
 
 // toBroadcastIP calculates the broadcast address for a given IPv4 network.
@@ -138,15 +128,39 @@ func main() {
 	setupLogger()
 
 	if len(os.Args) < 2 {
-		log.Fatal().Msgf("Usage: %s INTERFACES...", os.Args[0])
+		log.Fatal().Msgf("Usage: %s INTERFACES... [CIDR...]", os.Args[0])
 	}
 
-	networks, err := collectNetworks(os.Args[1:])
-	if err != nil {
-		log.Fatal().Err(err).Msg("Failed to collect network interfaces")
+	var networks []net.IPNet
+
+	for _, arg := range os.Args[1:] {
+		if strings.Contains(arg, "/") {
+			ipnet, err := parseCIDR(arg)
+			if err != nil {
+				log.Fatal().Err(err).Msg("Invalid argument")
+			}
+			networks = append(networks, ipnet)
+		} else {
+			iface, err := net.InterfaceByName(arg)
+			if err != nil {
+				log.Fatal().Err(err).Str("interface", arg).Msg("Failed to resolve interface")
+			}
+
+			addrs, err := iface.Addrs()
+			if err != nil {
+				log.Fatal().Err(err).Str("interface", arg).Msg("Failed to get addresses")
+			}
+
+			for _, addr := range addrs {
+				if ipnet, ok := addr.(*net.IPNet); ok && ipnet.IP.To4() != nil {
+					networks = append(networks, *ipnet)
+				}
+			}
+		}
 	}
+
 	if len(networks) == 0 {
-		log.Fatal().Msg("No valid network interfaces found")
+		log.Fatal().Msg("No valid networks found")
 	}
 
 	conn, err := net.ListenUDP("udp4", &net.UDPAddr{Port: wol.DefaultPort})

@@ -1,6 +1,7 @@
 package main
 
 import (
+	"bytes"
 	"net"
 	"testing"
 )
@@ -95,6 +96,14 @@ func TestToBroadcastIP(t *testing.T) {
 			nil,
 			false,
 		},
+		{
+			net.IPNet{
+				IP:   net.IPv4(192, 168, 2, 5),
+				Mask: net.CIDRMask(32, 32),
+			},
+			net.IPv4(192, 168, 2, 5),
+			true,
+		},
 	}
 
 	for _, tt := range tests {
@@ -112,6 +121,36 @@ func TestToBroadcastIP(t *testing.T) {
 				"toBroadcastIP(%q) = %v, want %v",
 				tt.network, got, tt.expected,
 			)
+		}
+	}
+}
+
+func TestParseCIDR(t *testing.T) {
+	tests := []struct {
+		input    string
+		expected net.IPNet
+		isValid  bool
+	}{
+		{"10.0.0.0/24", net.IPNet{IP: net.IPv4(10, 0, 0, 0), Mask: net.CIDRMask(24, 32)}, true},
+		{"192.168.2.5/32", net.IPNet{IP: net.IPv4(192, 168, 2, 5), Mask: net.CIDRMask(32, 32)}, true},
+		{"172.16.0.0/16", net.IPNet{IP: net.IPv4(172, 16, 0, 0), Mask: net.CIDRMask(16, 32)}, true},
+		{"not-a-cidr", net.IPNet{}, false},
+		{"::1/128", net.IPNet{}, false},
+		{"10.0.0.1/129", net.IPNet{}, false},
+	}
+
+	for _, tt := range tests {
+		got, err := parseCIDR(tt.input)
+		if err != nil && tt.isValid {
+			t.Errorf("parseCIDR(%q) unexpected error: %v", tt.input, err)
+			continue
+		}
+		if err == nil && !tt.isValid {
+			t.Errorf("parseCIDR(%q) expected error, got nil", tt.input)
+			continue
+		}
+		if tt.isValid && (!got.IP.Equal(tt.expected.IP) || !bytes.Equal(got.Mask, tt.expected.Mask)) {
+			t.Errorf("parseCIDR(%q) IP = %v, want %v; Mask = %v, want %v", tt.input, got.IP, tt.expected.IP, got.Mask, tt.expected.Mask)
 		}
 	}
 }

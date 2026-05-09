@@ -10,6 +10,7 @@ woken up remotely.
 - Relays valid WOL packets to all other monitored networks
 - Prevents packet loops and duplicate broadcasts
 - Lightweight and easy to deploy (single binary or Docker image)
+- Accepts both interface names and CIDR notation for target networks
 
 ## Usage
 
@@ -46,6 +47,22 @@ sudo ./wol-relay eno1 eno2
 ```
 
 Replace `eno1` and `eno2` with the names of your network interfaces.
+
+### CIDR Targets
+
+You can also specify networks directly using CIDR notation, including /32 for
+unicast relay to individual hosts:
+
+```sh
+# Relay between interface eno1 and a remote subnet
+sudo ./wol-relay eno1 10.0.0.0/24
+
+# Unicast relay to a specific host
+sudo ./wol-relay eno1 192.168.2.5/32
+
+# Mixed interfaces and CIDRs
+sudo ./wol-relay eno1 eno2 10.0.0.0/24 172.16.0.10/32
+```
 
 ## Requirements
 
