@@ -5,12 +5,12 @@ import (
 	"testing"
 )
 
-func TestIsIPOneOf(t *testing.T) {
-	networks := []net.IPNet{
-		{IP: net.IPv4(192, 168, 1, 1), Mask: net.CIDRMask(24, 32)},
-		{IP: net.IPv4(10, 0, 0, 1), Mask: net.CIDRMask(24, 32)},
-	}
+var testNetworks = []net.IPNet{
+	{IP: net.IPv4(192, 168, 1, 1), Mask: net.CIDRMask(24, 32)},
+	{IP: net.IPv4(10, 0, 0, 1), Mask: net.CIDRMask(24, 32)},
+}
 
+func TestIsIPOneOf(t *testing.T) {
 	tests := []struct {
 		ip       net.IP
 		expected bool
@@ -25,7 +25,7 @@ func TestIsIPOneOf(t *testing.T) {
 	}
 
 	for _, tt := range tests {
-		got := isIPOneOf(tt.ip, networks)
+		got := isIPOneOf(tt.ip, testNetworks)
 		if got != tt.expected {
 			t.Errorf(
 				"isIPOneOf(%v, networks) = %v; want %v",
@@ -36,11 +36,6 @@ func TestIsIPOneOf(t *testing.T) {
 }
 
 func TestIsIPInAny(t *testing.T) {
-	networks := []net.IPNet{
-		{IP: net.IPv4(192, 168, 1, 1), Mask: net.CIDRMask(24, 32)},
-		{IP: net.IPv4(10, 0, 0, 1), Mask: net.CIDRMask(24, 32)},
-	}
-
 	tests := []struct {
 		ip       net.IP
 		expected bool
@@ -60,7 +55,7 @@ func TestIsIPInAny(t *testing.T) {
 	}
 
 	for _, tt := range tests {
-		got := isIPInAny(tt.ip, networks)
+		got := isIPInAny(tt.ip, testNetworks)
 		if got != tt.expected {
 			t.Errorf(
 				"isIPInAny(%v, networks) = %v; want %v",
