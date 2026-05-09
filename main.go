@@ -82,7 +82,8 @@ func isIPOneOf(ip net.IP, networks []net.IPNet) bool {
 	return false
 }
 
-// isIPInAny checks if the given IP address is in any of the provided networks.
+// isIPInAny checks if the given IP address is contained in any of the provided
+// networks.
 func isIPInAny(ip net.IP, networks []net.IPNet) bool {
 	for _, network := range networks {
 		if network.Contains(ip) {
