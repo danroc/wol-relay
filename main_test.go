@@ -11,28 +11,54 @@ var testNetworks = []net.IPNet{
 	{IP: net.IPv4(10, 0, 0, 1), Mask: net.CIDRMask(24, 32)},
 }
 
-func TestIsIPOneOf(t *testing.T) {
+func TestContainsIP(t *testing.T) {
+	ips := []net.IP{
+		net.IPv4(192, 168, 1, 5),
+		net.IPv4(10, 0, 0, 5),
+	}
 	tests := []struct {
 		ip       net.IP
 		expected bool
 	}{
-		{net.IPv4(192, 168, 1, 1), true},
-		{net.IPv4(192, 168, 1, 0), false},
-		{net.IPv4(192, 168, 0, 1), false},
-		{net.IPv4(10, 0, 0, 1), true},
-		{net.IPv4(10, 0, 0, 0), false},
-		{net.IPv4(10, 0, 1, 1), false},
+		{net.IPv4(192, 168, 1, 5), true},
+		{net.IPv4(10, 0, 0, 5), true},
+		{net.IPv4(192, 168, 1, 6), false},
+		{net.IPv4(10, 0, 0, 4), false},
 		{net.IPv4(8, 8, 8, 8), false},
+		// IPv4-mapped IPv6 form of 192.168.1.5; must compare equal.
+		{net.IP{0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0xff, 0xff, 192, 168, 1, 5}, true},
 	}
 
 	for _, tt := range tests {
-		got := isIPOneOf(tt.ip, testNetworks)
+		got := containsIP(ips, tt.ip)
 		if got != tt.expected {
 			t.Errorf(
-				"isIPOneOf(%v, networks) = %v; want %v",
+				"containsIP(ips, %v) = %v; want %v",
 				tt.ip, got, tt.expected,
 			)
 		}
+	}
+}
+
+func TestLocalIPs(t *testing.T) {
+	ips, err := localIPs()
+	if err != nil {
+		t.Fatalf("localIPs() unexpected error: %v", err)
+	}
+	if len(ips) == 0 {
+		t.Fatal("localIPs() returned no addresses; expected at least loopback")
+	}
+	foundLoopback := false
+	for _, ip := range ips {
+		if ip.To4() == nil {
+			t.Errorf("localIPs() returned non-IPv4 address: %v", ip)
+		}
+		if ip.IsLoopback() {
+			foundLoopback = true
+		}
+	}
+	if !foundLoopback {
+		t.Errorf("localIPs() did not include loopback; got %v", ips)
 	}
 }
 
@@ -132,6 +158,7 @@ func TestParseCIDR(t *testing.T) {
 		isValid  bool
 	}{
 		{"10.0.0.0/24", net.IPNet{IP: net.IPv4(10, 0, 0, 0), Mask: net.CIDRMask(24, 32)}, true},
+		{"10.0.0.5/24", net.IPNet{IP: net.IPv4(10, 0, 0, 0), Mask: net.CIDRMask(24, 32)}, true},
 		{"192.168.2.5/32", net.IPNet{IP: net.IPv4(192, 168, 2, 5), Mask: net.CIDRMask(32, 32)}, true},
 		{"172.16.0.0/16", net.IPNet{IP: net.IPv4(172, 16, 0, 0), Mask: net.CIDRMask(16, 32)}, true},
 		{"not-a-cidr", net.IPNet{}, false},

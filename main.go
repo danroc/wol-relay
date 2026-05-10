@@ -29,8 +29,8 @@ const (
 	FieldPacketSize    = "packet_size"
 )
 
-// parseCIDR parses a CIDR string and returns the resulting IPv4 network.
-// It rejects IPv6 addresses and invalid CIDR notation.
+// parseCIDR parses a CIDR string and returns the resulting IPv4 network. IPv6 CIDRs are
+// rejected.
 func parseCIDR(s string) (net.IPNet, error) {
 	_, ipnet, err := net.ParseCIDR(s)
 	if err != nil {
@@ -40,6 +40,39 @@ func parseCIDR(s string) (net.IPNet, error) {
 		return net.IPNet{}, fmt.Errorf("IPv6 not supported: %q", s)
 	}
 	return *ipnet, nil
+}
+
+// resolveArg expands a CLI argument into one or more IPv4 networks.
+//
+// Arguments containing "/" are treated as CIDR notation; everything else is treated as
+// a network interface name (Linux interface names cannot contain "/", so the heuristic
+// is unambiguous).
+func resolveArg(arg string) ([]net.IPNet, error) {
+	if strings.Contains(arg, "/") {
+		ipnet, err := parseCIDR(arg)
+		if err != nil {
+			return nil, err
+		}
+		return []net.IPNet{ipnet}, nil
+	}
+
+	iface, err := net.InterfaceByName(arg)
+	if err != nil {
+		return nil, fmt.Errorf("resolve interface %q: %w", arg, err)
+	}
+
+	addrs, err := iface.Addrs()
+	if err != nil {
+		return nil, fmt.Errorf("get addresses for %q: %w", arg, err)
+	}
+
+	var networks []net.IPNet
+	for _, addr := range addrs {
+		if ipnet, ok := addr.(*net.IPNet); ok && ipnet.IP.To4() != nil {
+			networks = append(networks, *ipnet)
+		}
+	}
+	return networks, nil
 }
 
 // toBroadcastIP calculates the broadcast address for a given IPv4 network.
@@ -61,17 +94,6 @@ func toBroadcastIP(network net.IPNet) (net.IP, error) {
 	), nil
 }
 
-// isIPOneOf checks if the given IP address matches the IP address of any network in the
-// provided list.
-func isIPOneOf(ip net.IP, networks []net.IPNet) bool {
-	for _, network := range networks {
-		if network.IP.Equal(ip) {
-			return true
-		}
-	}
-	return false
-}
-
 // isIPInAny checks if the given IP address is contained in any of the provided
 // networks.
 func isIPInAny(ip net.IP, networks []net.IPNet) bool {
@@ -81,6 +103,41 @@ func isIPInAny(ip net.IP, networks []net.IPNet) bool {
 		}
 	}
 	return false
+}
+
+// containsIP reports whether ip is present in ips.
+func containsIP(ips []net.IP, ip net.IP) bool {
+	for _, candidate := range ips {
+		if candidate.Equal(ip) {
+			return true
+		}
+	}
+	return false
+}
+
+// localIPs returns all IPv4 addresses assigned to local network interfaces.
+//
+// Used for self-detection so loop prevention works regardless of whether targets were
+// specified as interface names or CIDRs.
+func localIPs() ([]net.IP, error) {
+	ifaces, err := net.Interfaces()
+	if err != nil {
+		return nil, err
+	}
+
+	var ips []net.IP
+	for _, iface := range ifaces {
+		addrs, err := iface.Addrs()
+		if err != nil {
+			return nil, fmt.Errorf("get addresses for %q: %w", iface.Name, err)
+		}
+		for _, addr := range addrs {
+			if ipnet, ok := addr.(*net.IPNet); ok && ipnet.IP.To4() != nil {
+				ips = append(ips, ipnet.IP.To4())
+			}
+		}
+	}
+	return ips, nil
 }
 
 // sendWOLPacket sends a Wake-on-LAN packet to the given network and MAC address.
@@ -132,35 +189,21 @@ func main() {
 	}
 
 	var networks []net.IPNet
-
 	for _, arg := range os.Args[1:] {
-		if strings.Contains(arg, "/") {
-			ipnet, err := parseCIDR(arg)
-			if err != nil {
-				log.Fatal().Err(err).Msg("Invalid argument")
-			}
-			networks = append(networks, ipnet)
-		} else {
-			iface, err := net.InterfaceByName(arg)
-			if err != nil {
-				log.Fatal().Err(err).Str("interface", arg).Msg("Failed to resolve interface")
-			}
-
-			addrs, err := iface.Addrs()
-			if err != nil {
-				log.Fatal().Err(err).Str("interface", arg).Msg("Failed to get addresses")
-			}
-
-			for _, addr := range addrs {
-				if ipnet, ok := addr.(*net.IPNet); ok && ipnet.IP.To4() != nil {
-					networks = append(networks, *ipnet)
-				}
-			}
+		resolved, err := resolveArg(arg)
+		if err != nil {
+			log.Fatal().Err(err).Msg("Failed to resolve argument")
 		}
+		networks = append(networks, resolved...)
 	}
 
 	if len(networks) == 0 {
 		log.Fatal().Msg("No valid networks found")
+	}
+
+	selfIPs, err := localIPs()
+	if err != nil {
+		log.Fatal().Err(err).Msg("Failed to enumerate local addresses")
 	}
 
 	conn, err := net.ListenUDP("udp4", &net.UDPAddr{Port: wol.DefaultPort})
@@ -184,9 +227,8 @@ func main() {
 			continue
 		}
 
-		// We check if source IP matches one of the interfaces to avoid an infinite loop
-		// when sending WOL packets.
-		if isIPOneOf(source.IP, networks) {
+		// Skip packets from this host to prevent relay loops.
+		if containsIP(selfIPs, source.IP) {
 			continue
 		}
 
