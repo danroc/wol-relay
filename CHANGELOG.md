@@ -7,6 +7,32 @@ and this project adheres to [Semantic Versioning](https://semver.org/spec/v2.0.0
 
 ## [Unreleased]
 
+## [0.1.13] - 2026-05-10
+
+### Added
+
+- Accept CIDR notation as a target alongside interface names ([14c7683](https://github.com/danroc/wol-relay/commit/14c7683))
+
+### Changed
+
+- Clean up packet handling and startup error paths ([b8080de](https://github.com/danroc/wol-relay/commit/b8080de))
+- Add golangci-lint configuration ([38fcae5](https://github.com/danroc/wol-relay/commit/38fcae5))
+- Update dependencies
+  - Update module `github.com/mattn/go-isatty` to v0.0.22 ([#74](https://github.com/danroc/wol-relay/pull/74), [#68](https://github.com/danroc/wol-relay/pull/68))
+  - Update module `github.com/rs/zerolog` to v1.35.1 ([#72](https://github.com/danroc/wol-relay/pull/72), [#63](https://github.com/danroc/wol-relay/pull/63))
+  - Update module `golang.org/x/sys` to v0.44.0 ([#76](https://github.com/danroc/wol-relay/pull/76), [#67](https://github.com/danroc/wol-relay/pull/67), [#56](https://github.com/danroc/wol-relay/pull/56), [#47](https://github.com/danroc/wol-relay/pull/47), [#39](https://github.com/danroc/wol-relay/pull/39))
+  - Update golang docker tag to v1.26.3 ([#75](https://github.com/danroc/wol-relay/pull/75), [#66](https://github.com/danroc/wol-relay/pull/66), [#55](https://github.com/danroc/wol-relay/pull/55), [#46](https://github.com/danroc/wol-relay/pull/46), [#42](https://github.com/danroc/wol-relay/pull/42))
+  - Update golang docker digests ([#79](https://github.com/danroc/wol-relay/pull/79), [#78](https://github.com/danroc/wol-relay/pull/78), [#77](https://github.com/danroc/wol-relay/pull/77), [#71](https://github.com/danroc/wol-relay/pull/71), [#70](https://github.com/danroc/wol-relay/pull/70), [#62](https://github.com/danroc/wol-relay/pull/62), [#61](https://github.com/danroc/wol-relay/pull/61), [#60](https://github.com/danroc/wol-relay/pull/60), [#59](https://github.com/danroc/wol-relay/pull/59), [#58](https://github.com/danroc/wol-relay/pull/58), [#57](https://github.com/danroc/wol-relay/pull/57), [#51](https://github.com/danroc/wol-relay/pull/51), [#50](https://github.com/danroc/wol-relay/pull/50), [#49](https://github.com/danroc/wol-relay/pull/49), [#40](https://github.com/danroc/wol-relay/pull/40), [#38](https://github.com/danroc/wol-relay/pull/38), [#37](https://github.com/danroc/wol-relay/pull/37), [#36](https://github.com/danroc/wol-relay/pull/36), [#35](https://github.com/danroc/wol-relay/pull/35))
+  - Update `docker/build-push-action` to v7 ([#54](https://github.com/danroc/wol-relay/pull/54), [#48](https://github.com/danroc/wol-relay/pull/48), [#69](https://github.com/danroc/wol-relay/pull/69))
+  - Update `docker/login-action` to v4 ([#52](https://github.com/danroc/wol-relay/pull/52), [#64](https://github.com/danroc/wol-relay/pull/64), [#43](https://github.com/danroc/wol-relay/pull/43))
+  - Update `docker/metadata-action` to v6 ([#53](https://github.com/danroc/wol-relay/pull/53))
+  - Update `actions/checkout` digest ([#44](https://github.com/danroc/wol-relay/pull/44))
+
+### Fixed
+
+- Detect self-sourced packets via local addresses to prevent relay loops when a CIDR target overlaps a local subnet ([2752788](https://github.com/danroc/wol-relay/commit/2752788))
+- Force IPv4 sockets to avoid IPv4-mapped IPv6 source addresses ([ec4af01](https://github.com/danroc/wol-relay/commit/ec4af01))
+
 ## [0.1.12] - 2025-12-21
 
 ### Changed
@@ -163,7 +189,8 @@ and this project adheres to [Semantic Versioning](https://semver.org/spec/v2.0.0
 - Use logrus as logger ([8739a5b](https://github.com/danroc/wol-repeater/commit/8739a5b))
 - Remove `main` binary ([a9dc4e4](https://github.com/danroc/wol-repeater/commit/a9dc4e4))
 
-[Unreleased]: https://github.com/danroc/wol-relay/compare/v0.1.12...HEAD
+[Unreleased]: https://github.com/danroc/wol-relay/compare/v0.1.13...HEAD
+[0.1.13]: https://github.com/danroc/wol-relay/compare/v0.1.12...v0.1.13
 [0.1.12]: https://github.com/danroc/wol-relay/compare/v0.1.11...v0.1.12
 [0.1.11]: https://github.com/danroc/wol-relay/compare/v0.1.10...v0.1.11
 [0.1.10]: https://github.com/danroc/wol-relay/compare/v0.1.9...v0.1.10
