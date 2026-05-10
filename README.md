@@ -1,8 +1,7 @@
 # Wake-on-LAN Relay
 
-Relay Wake-on-LAN (WOL) packets between multiple networks or interfaces. This
-is useful for environments where devices are on separate subnets and need to be
-woken up remotely.
+Relay Wake-on-LAN (WOL) packets between multiple networks or interfaces. This is useful
+for environments where devices are on separate subnets and need to be woken up remotely.
 
 ## Features
 
@@ -16,8 +15,8 @@ woken up remotely.
 
 ### Docker Compose
 
-Add the following service to your `compose.yaml` to relay WOL packets between
-the `eno1` and `eno2` network interfaces:
+Add the following service to your `compose.yaml` to relay WOL packets between the `eno1`
+and `eno2` network interfaces:
 
 ```yaml
 services:
@@ -31,8 +30,8 @@ services:
     restart: unless-stopped
 ```
 
-> **Note:** `network_mode: host` is required for the container to access host
-> network interfaces and broadcast packets.
+> **Note:** `network_mode: host` is required for the container to access host network
+> interfaces and broadcast packets.
 
 ### Standalone
 
@@ -50,8 +49,8 @@ Replace `eno1` and `eno2` with the names of your network interfaces.
 
 ### CIDR Targets
 
-You can also specify networks directly using CIDR notation, including /32 for
-unicast relay to individual hosts:
+You can also specify networks directly using CIDR notation, including /32 for unicast
+relay to individual hosts:
 
 ```sh
 # Relay between interface eno1 and a remote subnet
