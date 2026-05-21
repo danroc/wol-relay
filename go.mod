@@ -9,5 +9,5 @@ require (
 
 require (
 	github.com/mattn/go-colorable v0.1.14 // indirect
-	golang.org/x/sys v0.44.0 // indirect
+	golang.org/x/sys v0.45.0 // indirect
 )
