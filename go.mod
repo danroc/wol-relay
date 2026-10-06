@@ -8,6 +8,6 @@ require (
 )
 
 require (
-	github.com/mattn/go-colorable v0.1.15 // indirect
+	github.com/mattn/go-colorable v0.1.16 // indirect
 	golang.org/x/sys v0.48.0 // indirect
 )
