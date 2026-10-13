@@ -7,9 +7,29 @@ and this project adheres to [Semantic Versioning](https://semver.org/spec/v2.0.0
 
 ## [Unreleased]
 
+### Added
+
+- Add `--version` flag
+- Add log level and format selection via `-l`/`-F` flags and environment variables
+- Add target selection via the `WOL_RELAY_TARGETS` environment variable
+- Log skipped packets and resolved networks at debug level
+- Handle SIGTERM and SIGINT for clean shutdown
+- Build multi-arch Docker images (amd64, arm64) with a publish smoke test
+
 ### Changed
 
 - Rewrite the service in Rust
+- Log one flat JSON object per line with lowercase levels, matching the previous zerolog output
+- Exit on unrecoverable receive errors so the supervisor can restart the relay
+- Cache Docker dependency builds with cargo-chef
+- Ignore interface addresses with unknown netmasks (macOS secondary addresses)
+
+### Fixed
+
+- Skip interface addresses that report an unknown netmask, which previously
+  resolved to a `0.0.0.0/0` network that monitored every IPv4 source
+- Drop duplicate monitored networks, which previously relayed the same packet
+  multiple times
 
 ## [0.1.13] - 2026-05-10
 
