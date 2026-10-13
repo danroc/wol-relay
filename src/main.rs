@@ -1,46 +1,35 @@
 //! Wake-on-LAN relay that listens for WOL packets on specified network
 //! interfaces and relays them to other networks.
 
-use std::io::IsTerminal;
 use std::net::{Ipv4Addr, SocketAddr, UdpSocket};
 use std::process::exit;
 
+use clap::Parser;
+
+use wol_relay::cli::Cli;
+use wol_relay::logging;
 use wol_relay::network::{
     Ipv4Network, MAX_PACKET_SIZE, contains_ip, is_ip_in_any, local_ipv4_addrs,
     resolve_arg, send_wol_packet, sender_socket,
 };
 use wol_relay::wol;
 
-/// Configures the global logger to write to stdout. If stdout is a TTY, it
-/// uses console format; otherwise, it uses JSON format.
-fn setup_logger() {
-    if std::io::stdout().is_terminal() {
-        tracing_subscriber::fmt().init();
-    } else {
-        tracing_subscriber::fmt().json().init();
-    }
-}
-
 /// Logs a fatal error with the given message and exits. The message carries
 /// the log message and `error` carries the full error chain.
 fn fatal(err: anyhow::Error, message: &str) -> ! {
-    tracing::error!(error = format!("{err:#}"), "{message}");
+    log::error!(error = format!("{err:#}"); "{message}");
     exit(1)
 }
 
 /// Runs the relay: parses arguments, resolves monitored networks, and relays
 /// WOL packets between them.
 fn run() {
-    let mut args = std::env::args();
-    let argv0 = args.next().unwrap_or_else(|| "wol-relay".to_string());
-    let args: Vec<String> = args.collect();
-    if args.is_empty() {
-        tracing::error!("Usage: {argv0} INTERFACES... [CIDR...]");
-        exit(1);
-    }
+    let cli = Cli::parse();
+
+    logging::init(cli.log_level, cli.log_format);
 
     let mut networks: Vec<Ipv4Network> = Vec::new();
-    for arg in &args {
+    for arg in &cli.targets {
         match resolve_arg(arg) {
             Ok(resolved) => networks.extend(resolved),
             Err(err) => fatal(err, "Failed to resolve argument"),
@@ -48,7 +37,7 @@ fn run() {
     }
 
     if networks.is_empty() {
-        tracing::error!("No valid networks found");
+        log::error!("No valid networks found");
         exit(1);
     }
 
@@ -67,13 +56,13 @@ fn run() {
     };
 
     let mut buffer = [0u8; MAX_PACKET_SIZE];
-    tracing::info!("Listening for WOL packets...");
+    log::info!("Listening for WOL packets...");
 
     loop {
         let (n, source) = match listener.recv_from(&mut buffer) {
             Ok(result) => result,
             Err(err) => {
-                tracing::error!(error = %err, "Cannot read WOL packet");
+                log::error!(error:display = err; "Cannot read WOL packet");
                 continue;
             }
         };
@@ -97,10 +86,10 @@ fn run() {
         let mac = match wol::parse_packet(&buffer[..n]) {
             Ok(mac) => mac,
             Err(err) => {
-                tracing::error!(
-                    source_ip = %source_ip,
-                    packet_size = n,
-                    error = %err,
+                log::error!(
+                    source_ip:display = source_ip,
+                    packet_size = n as u64,
+                    error:display = err;
                     "Failed to parse WOL packet"
                 );
                 continue;
@@ -116,18 +105,18 @@ fn run() {
             }
 
             if let Err(err) = send_wol_packet(&sender, *network, mac) {
-                tracing::error!(
-                    source_ip = %source_ip,
-                    target_network = %network,
+                log::error!(
+                    source_ip:display = source_ip,
+                    target_network:display = network,
                     target_mac = wol::mac_to_string(&mac),
-                    error = %err,
+                    error = format!("{err:#}");
                     "Failed to relay WOL packet"
                 );
             } else {
-                tracing::info!(
-                    source_ip = %source_ip,
-                    target_network = %network,
-                    target_mac = wol::mac_to_string(&mac),
+                log::info!(
+                    source_ip:display = source_ip,
+                    target_network:display = network,
+                    target_mac = wol::mac_to_string(&mac);
                     "WOL packet relayed successfully"
                 );
             }
@@ -136,6 +125,5 @@ fn run() {
 }
 
 fn main() {
-    setup_logger();
     run();
 }
