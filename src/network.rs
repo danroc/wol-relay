@@ -145,8 +145,13 @@ pub fn resolve_arg(arg: &str) -> anyhow::Result<Vec<Ipv4Network>> {
         .iter()
         .filter(|iface| iface.name == arg)
         .filter_map(|iface| match &iface.addr {
-            if_addrs::IfAddr::V4(addr) => netmask_to_prefix(addr.netmask)
-                .and_then(|prefix| Ipv4Network::new(addr.ip, prefix)),
+            // A 0.0.0.0 netmask means getifaddrs does not know it (macOS
+            // secondary addresses); treating it as a real /0 would monitor
+            // every IPv4 source, so those addresses are skipped.
+            if_addrs::IfAddr::V4(addr) if addr.netmask != Ipv4Addr::UNSPECIFIED => {
+                netmask_to_prefix(addr.netmask)
+                    .and_then(|prefix| Ipv4Network::new(addr.ip, prefix))
+            }
             _ => None,
         })
         .collect())
@@ -194,12 +199,20 @@ pub fn send_wol_packet(
     socket: &UdpSocket,
     network: Ipv4Network,
     mac: wol::Mac,
-) -> anyhow::Result<()> {
+) -> std::io::Result<()> {
     let broadcast_ip = network.broadcast();
-    socket
-        .send_to(&wol::build_packet(mac), (broadcast_ip, wol::DEFAULT_PORT))
-        .map_err(|err| anyhow::anyhow!("failed to send WOL packet: {err}"))?;
+    socket.send_to(&wol::build_packet(mac), (broadcast_ip, wol::DEFAULT_PORT))?;
     Ok(())
+}
+
+/// True for socket errors a blocking call may recover from without giving up.
+pub fn is_transient(err: &std::io::Error) -> bool {
+    matches!(
+        err.kind(),
+        std::io::ErrorKind::WouldBlock
+            | std::io::ErrorKind::TimedOut
+            | std::io::ErrorKind::Interrupted
+    )
 }
 
 #[cfg(test)]
@@ -374,6 +387,18 @@ mod tests {
     }
 
     #[test]
+    fn resolve_arg_skips_addresses_with_unknown_netmask() {
+        // macOS getifaddrs reports a 0.0.0.0 netmask for secondary interface
+        // addresses (e.g. loopback aliases); treating it as a real /0 would
+        // monitor every IPv4 source. Such addresses must be skipped.
+        let networks = resolve_arg("lo0").expect("loopback interface must resolve");
+        assert!(
+            networks.iter().all(|n| n.prefix() > 0),
+            "unexpected /0 network: {networks:?}"
+        );
+    }
+
+    #[test]
     fn resolve_arg_accepts_existing_interface_without_addresses() {
         // An existing interface with no IP address must resolve to an empty
         // list, not an error (Go: net.InterfaceByName succeeds and Addrs()
@@ -391,5 +416,31 @@ mod tests {
     fn sender_socket_sets_broadcast() {
         let socket = sender_socket().unwrap();
         assert!(socket.broadcast().unwrap(), "SO_BROADCAST must be enabled");
+    }
+
+    #[test]
+    fn send_wol_packet_sends_to_loopback_host() {
+        let socket = sender_socket().unwrap();
+        let network = net("127.0.0.1", 32);
+        let mac: wol::Mac = [0x00, 0x11, 0x22, 0x33, 0x44, 0x55];
+        send_wol_packet(&socket, network, mac)
+            .expect("unicast send to a loopback host must succeed");
+    }
+
+    #[test]
+    fn transient_errors_are_wouldblock_timeout_and_interrupted() {
+        assert!(is_transient(&std::io::Error::from(
+            std::io::ErrorKind::WouldBlock
+        )));
+        assert!(is_transient(&std::io::Error::from(
+            std::io::ErrorKind::TimedOut
+        )));
+        assert!(is_transient(&std::io::Error::from(
+            std::io::ErrorKind::Interrupted
+        )));
+        assert!(!is_transient(&std::io::Error::from(
+            std::io::ErrorKind::ConnectionRefused
+        )));
+        assert!(!is_transient(&std::io::Error::other("hard failure")));
     }
 }
