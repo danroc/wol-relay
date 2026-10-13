@@ -26,50 +26,30 @@ RESET := \033[0m
 # =============================================================================
 
 .PHONY: lint
-lint: lint-lines lint-revive lint-sec lint-vet ## Run all linters
+lint: lint-fmt lint-clippy ## Run all linters
 
 .PHONY: lint-fix
-lint-fix: lint lint-lines-fix ## Try to fix lint issues
+lint-fix: lint-fix-fmt ## Try to fix lint issues
 
-.PHONY: lint-lines
-lint-lines: ## Lint lines length
-	golines -w -m 79 --base-formatter=gofumpt --dry-run .
+.PHONY: lint-fmt
+lint-fmt: ## Check formatting
+	cargo fmt --check
 
-.PHONY: lint-lines-fix
-lint-lines-fix: ## Fix lines length
-	golines -w -m 79 --base-formatter=gofumpt .
+.PHONY: lint-fix-fmt
+lint-fix-fmt: ## Fix formatting
+	cargo fmt
 
-.PHONY: lint-revive
-lint-revive: ## Run revive linter
-	revive -config revive.toml  ./...
-
-.PHONY: lint-sec
-lint-sec: ## Run gosec linter
-	gosec --exclude-dir=internal/tools ./...
-
-.PHONY: lint-vet
-lint-vet: ## Run go-vet linter
-	go vet ./...
+.PHONY: lint-clippy
+lint-clippy: ## Run clippy linter
+	cargo clippy --all-targets -- -D warnings
 
 # =============================================================================
 # @Dependencies
 # =============================================================================
 
-.PHONY: deps-tidy
-deps-tidy: ## Tidy up dependencies
-	go mod tidy
-
 .PHONY: deps-update
 deps-update: ## Update dependencies
-	go get -u ./...
-
-.PHONY: deps-tools
-deps-tools: ## Install development dependencies
-	go install github.com/boumenot/gocover-cobertura@latest
-	go install github.com/mgechev/revive@latest
-	go install github.com/securego/gosec/v2/cmd/gosec@latest
-	go install github.com/segmentio/golines@latest
-	go install mvdan.cc/gofumpt@latest
+	cargo update
 
 # =============================================================================
 # Directory Creation
@@ -84,14 +64,15 @@ $(DIST_DIR):
 
 .PHONY: run
 run: ## Run the main program
-	go run .
+	cargo run --
 
 .PHONY: build
 build: $(DIST_DIR) ## Build the binary
-	CGO_ENABLED=0 go build -ldflags="-s -w" -o $(DIST_DIR)/wol-relay .
+	cargo build --release
+	cp target/release/wol-relay $(DIST_DIR)/wol-relay
 
 .PHONY: build-docker
-build-docker: $(DIST_DIR) ## Build the Docker image
+build-docker: ## Build the Docker image
 	docker build -t $(DOCKER_IMAGE) .
 
 # =============================================================================
@@ -99,15 +80,8 @@ build-docker: $(DIST_DIR) ## Build the Docker image
 # =============================================================================
 
 .PHONY: test
-test: test-unit ## Run all tests
-
-.PHONY: test-unit
-test-unit: ## Run unit tests
-	go test -coverprofile=coverage.out ./...
-
-.PHONY: test-coverage
-test-coverage: test-unit ## Generate coverage report
-	gocover-cobertura < coverage.out > coverage.xml
+test: ## Run tests
+	cargo test
 
 # =============================================================================
 # @Help
