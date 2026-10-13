@@ -1,7 +1,12 @@
 //! IPv4 network and interface resolution helpers.
 
 use std::fmt;
-use std::net::Ipv4Addr;
+use std::net::{Ipv4Addr, UdpSocket};
+
+use crate::wol;
+
+/// The size of the buffer used to read WOL packets.
+pub const MAX_PACKET_SIZE: usize = 1024;
 
 /// An IPv4 network with its prefix length. Host bits are masked off.
 #[derive(Debug, Clone, Copy, PartialEq, Eq)]
@@ -163,6 +168,30 @@ pub fn is_ip_in_any(ip: Ipv4Addr, networks: &[Ipv4Network]) -> bool {
 /// Reports whether `ip` is present in `ips`.
 pub fn contains_ip(ips: &[Ipv4Addr], ip: Ipv4Addr) -> bool {
     ips.contains(&ip)
+}
+
+/// Creates a UDP socket for sending WOL packets, with the OS assigning the
+/// source port. Broadcast sends are enabled.
+pub fn sender_socket() -> anyhow::Result<UdpSocket> {
+    let socket = UdpSocket::bind("0.0.0.0:0")
+        .map_err(|err| anyhow::anyhow!("cannot create sender socket: {err}"))?;
+    socket
+        .set_broadcast(true)
+        .map_err(|err| anyhow::anyhow!("cannot enable broadcast on sender socket: {err}"))?;
+    Ok(socket)
+}
+
+/// Sends a Wake-on-LAN packet to the broadcast address of the given network.
+pub fn send_wol_packet(
+    socket: &UdpSocket,
+    network: Ipv4Network,
+    mac: wol::Mac,
+) -> anyhow::Result<()> {
+    let broadcast_ip = network.broadcast();
+    socket
+        .send_to(&wol::build_packet(mac), (broadcast_ip, wol::DEFAULT_PORT))
+        .map_err(|err| anyhow::anyhow!("failed to send WOL packet: {err}"))?;
+    Ok(())
 }
 
 #[cfg(test)]
@@ -334,5 +363,11 @@ mod tests {
     #[test]
     fn resolve_arg_rejects_unknown_interface() {
         assert!(resolve_arg("no-such-interface-xyz").is_err());
+    }
+
+    #[test]
+    fn sender_socket_sets_broadcast() {
+        let socket = sender_socket().unwrap();
+        assert!(socket.broadcast().unwrap(), "SO_BROADCAST must be enabled");
     }
 }
