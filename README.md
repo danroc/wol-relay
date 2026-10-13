@@ -39,10 +39,10 @@ You can also run the relay directly on your host:
 
 ```sh
 # Build the binary
-go build
+cargo build --release
 
 # Run the relay
-sudo ./wol-relay eno1 eno2
+sudo ./target/release/wol-relay eno1 eno2
 ```
 
 Replace `eno1` and `eno2` with the names of your network interfaces.
@@ -65,7 +65,7 @@ sudo ./wol-relay eno1 eno2 10.0.0.0/24 172.16.0.10/32
 
 ## Requirements
 
-- Go 1.24+ (for building from source)
+- Rust 1.85+ (for building from source)
 - Sufficient privileges to access network interfaces and send broadcast packets
 
 ## Development
@@ -73,7 +73,7 @@ sudo ./wol-relay eno1 eno2 10.0.0.0/24 172.16.0.10/32
 - Run tests:
 
   ```sh
-  go test ./...
+  cargo test
   ```
 
 - Build Docker image:
