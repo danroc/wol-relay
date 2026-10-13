@@ -51,7 +51,8 @@ impl Ipv4Network {
 
     /// Reports whether the given IP address is contained in this network.
     pub fn contains(&self, ip: Ipv4Addr) -> bool {
-        (u32::from(ip) & mask(self.prefix)) == (u32::from(self.network) & mask(self.prefix))
+        (u32::from(ip) & mask(self.prefix))
+            == (u32::from(self.network) & mask(self.prefix))
     }
 
     /// The broadcast address of this network.
@@ -144,9 +145,8 @@ pub fn resolve_arg(arg: &str) -> anyhow::Result<Vec<Ipv4Network>> {
         .iter()
         .filter(|iface| iface.name == arg)
         .filter_map(|iface| match &iface.addr {
-            if_addrs::IfAddr::V4(addr) => {
-                netmask_to_prefix(addr.netmask).and_then(|prefix| Ipv4Network::new(addr.ip, prefix))
-            }
+            if_addrs::IfAddr::V4(addr) => netmask_to_prefix(addr.netmask)
+                .and_then(|prefix| Ipv4Network::new(addr.ip, prefix)),
             _ => None,
         })
         .collect())
@@ -183,9 +183,9 @@ pub fn contains_ip(ips: &[Ipv4Addr], ip: Ipv4Addr) -> bool {
 pub fn sender_socket() -> anyhow::Result<UdpSocket> {
     let socket = UdpSocket::bind("0.0.0.0:0")
         .map_err(|err| anyhow::anyhow!("cannot create sender socket: {err}"))?;
-    socket
-        .set_broadcast(true)
-        .map_err(|err| anyhow::anyhow!("cannot enable broadcast on sender socket: {err}"))?;
+    socket.set_broadcast(true).map_err(|err| {
+        anyhow::anyhow!("cannot enable broadcast on sender socket: {err}")
+    })?;
     Ok(socket)
 }
 

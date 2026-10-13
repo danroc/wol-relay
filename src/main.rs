@@ -6,8 +6,8 @@ use std::net::{Ipv4Addr, SocketAddr, UdpSocket};
 use std::process::exit;
 
 use wol_relay::network::{
-    Ipv4Network, MAX_PACKET_SIZE, contains_ip, is_ip_in_any, local_ipv4_addrs, resolve_arg,
-    send_wol_packet, sender_socket,
+    Ipv4Network, MAX_PACKET_SIZE, contains_ip, is_ip_in_any, local_ipv4_addrs,
+    resolve_arg, send_wol_packet, sender_socket,
 };
 use wol_relay::wol;
 
