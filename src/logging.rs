@@ -11,10 +11,11 @@ use serde_json::Value as Json;
 
 use crate::cli::{LogFormat, LogLevel};
 
-/// Install the global logger. `RUST_LOG` overrides `level`.
+/// Install the global logger, writing to stdout. `RUST_LOG` overrides `level`.
 pub fn init(level: LogLevel, format: LogFormat) {
     let mut builder = env_logger::Builder::new();
     builder.filter_level(level.into()).parse_default_env();
+    builder.target(env_logger::Target::Stdout);
     match resolve(format, std::io::stdout().is_terminal()) {
         LogFormat::Json => builder.format(format_json),
         LogFormat::Text => builder.format(format_text),
@@ -76,17 +77,23 @@ fn needs_quotes(s: &str) -> bool {
     s.is_empty() || s.contains(|c: char| c.is_whitespace() || c == '"' || c == '=')
 }
 
+/// The `{"time":..,"level":..,"message":..` prefix of a JSON log line, with a
+/// lowercase level.
+fn json_prefix(time: &str, level: log::Level, message: &str) -> String {
+    let q = |s: &str| Json::from(s);
+    format!(
+        r#"{{"time":{},"level":{},"message":{}"#,
+        q(time),
+        q(&level.as_str().to_ascii_lowercase()),
+        q(message),
+    )
+}
+
 /// `{"time":..,"level":..,"message":..,<fields>}`; string values are escaped by
 /// `serde_json`.
 fn format_json(buf: &mut Formatter, record: &Record) -> io::Result<()> {
-    let q = |s: &str| Json::from(s);
     let time = buf.timestamp_millis().to_string();
-    let mut line = format!(
-        r#"{{"time":{},"level":{},"message":{}"#,
-        q(&time),
-        q(record.level().as_str()),
-        q(&record.args().to_string()),
-    );
+    let mut line = json_prefix(&time, record.level(), &record.args().to_string());
     let _ = record.key_values().visit(&mut JsonFields(&mut line));
     line.push('}');
     writeln!(buf, "{line}")
@@ -114,6 +121,26 @@ mod tests {
         assert_eq!(resolve(LogFormat::Auto, false), LogFormat::Json);
         assert_eq!(resolve(LogFormat::Text, false), LogFormat::Text);
         assert_eq!(resolve(LogFormat::Json, true), LogFormat::Json);
+    }
+
+    #[test]
+    fn json_prefix_uses_lowercase_level() {
+        assert_eq!(
+            json_prefix("2026-10-13T19:00:00Z", log::Level::Info, "hi"),
+            r#"{"time":"2026-10-13T19:00:00Z","level":"info","message":"hi""#
+        );
+        assert_eq!(
+            json_prefix("t", log::Level::Error, "failed"),
+            r#"{"time":"t","level":"error","message":"failed""#
+        );
+    }
+
+    #[test]
+    fn json_prefix_escapes_message() {
+        assert_eq!(
+            json_prefix("t", log::Level::Warn, r#"say "hi""#),
+            r#"{"time":"t","level":"warn","message":"say \"hi\"""#
+        );
     }
 
     #[test]

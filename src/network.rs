@@ -145,16 +145,23 @@ pub fn resolve_arg(arg: &str) -> anyhow::Result<Vec<Ipv4Network>> {
         .iter()
         .filter(|iface| iface.name == arg)
         .filter_map(|iface| match &iface.addr {
-            // A 0.0.0.0 netmask means getifaddrs does not know it (macOS
-            // secondary addresses); treating it as a real /0 would monitor
-            // every IPv4 source, so those addresses are skipped.
-            if_addrs::IfAddr::V4(addr) if addr.netmask != Ipv4Addr::UNSPECIFIED => {
-                netmask_to_prefix(addr.netmask)
-                    .and_then(|prefix| Ipv4Network::new(addr.ip, prefix))
-            }
+            if_addrs::IfAddr::V4(addr) => addr_to_network(addr.ip, addr.netmask),
             _ => None,
         })
         .collect())
+}
+
+/// An interface address and its netmask as a network, or `None` when the
+/// netmask is unknown or unusable.
+///
+/// A 0.0.0.0 netmask means getifaddrs does not know it (macOS secondary
+/// addresses); treating it as a real /0 would monitor every IPv4 source, so
+/// those addresses are skipped. Non-contiguous netmasks are skipped too.
+fn addr_to_network(ip: Ipv4Addr, netmask: Ipv4Addr) -> Option<Ipv4Network> {
+    if netmask == Ipv4Addr::UNSPECIFIED {
+        return None;
+    }
+    netmask_to_prefix(netmask).and_then(|prefix| Ipv4Network::new(ip, prefix))
 }
 
 /// Returns all IPv4 addresses assigned to local network interfaces.
@@ -388,13 +395,29 @@ mod tests {
 
     #[test]
     fn resolve_arg_skips_addresses_with_unknown_netmask() {
-        // macOS getifaddrs reports a 0.0.0.0 netmask for secondary interface
-        // addresses (e.g. loopback aliases); treating it as a real /0 would
-        // monitor every IPv4 source. Such addresses must be skipped.
-        let networks = resolve_arg("lo0").expect("loopback interface must resolve");
+        // Loopback interface name is platform-specific (lo0 on macOS, lo on
+        // Linux); every resolved network must have a known netmask, since a
+        // /0 network would monitor every IPv4 source.
+        let ifaces = if_addrs::get_if_addrs().unwrap();
+        let lo = ifaces
+            .iter()
+            .find(|i| i.is_loopback())
+            .expect("loopback interface");
+        let networks = resolve_arg(&lo.name).expect("loopback interface must resolve");
         assert!(
             networks.iter().all(|n| n.prefix() > 0),
             "unexpected /0 network: {networks:?}"
+        );
+    }
+
+    #[test]
+    fn addr_to_network_skips_unknown_and_non_contiguous_netmasks() {
+        let ip = |s: &str| s.parse::<Ipv4Addr>().unwrap();
+        assert_eq!(addr_to_network(ip("127.0.2.2"), ip("0.0.0.0")), None);
+        assert_eq!(addr_to_network(ip("10.0.0.5"), ip("255.0.255.0")), None);
+        assert_eq!(
+            addr_to_network(ip("10.0.0.5"), ip("255.255.255.0")),
+            Some(net("10.0.0.0", 24))
         );
     }
 

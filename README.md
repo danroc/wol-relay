@@ -69,9 +69,10 @@ services:
       WOL_RELAY_TARGETS: eno1,eno2
 ```
 
-Logs are structured: one JSON object per line with `time`, `level`, `message`
-and event fields such as `source_ip`, `target_network`, `target_mac` and
-`packet_size`. `RUST_LOG` overrides the configured level.
+Logs are structured and written to stdout: one JSON object per line with
+`time`, `level`, `message` and event fields such as `source_ip`,
+`target_network`, `target_mac` and `packet_size`. `RUST_LOG` overrides the
+configured level.
 
 ### CIDR Targets
 
