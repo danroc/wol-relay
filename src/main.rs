@@ -5,8 +5,6 @@ use std::io::IsTerminal;
 use std::net::{Ipv4Addr, SocketAddr, UdpSocket};
 use std::process::exit;
 
-use anyhow::{Context, anyhow};
-
 use wol_relay::network::{
     Ipv4Network, MAX_PACKET_SIZE, contains_ip, is_ip_in_any, local_ipv4_addrs, resolve_arg,
     send_wol_packet, sender_socket,
@@ -23,31 +21,50 @@ fn setup_logger() {
     }
 }
 
-/// Runs the relay loop. Everything the Go `main` did after logging setup.
-fn run() -> anyhow::Result<()> {
+/// Logs a fatal error with the given message and exits. The message carries
+/// the log message and `error` carries the full error chain.
+fn fatal(err: anyhow::Error, message: &str) -> ! {
+    tracing::error!(error = format!("{err:#}"), "{message}");
+    exit(1)
+}
+
+/// Runs the relay: parses arguments, resolves monitored networks, and relays
+/// WOL packets between them.
+fn run() {
     let mut args = std::env::args();
     let argv0 = args.next().unwrap_or_else(|| "wol-relay".to_string());
     let args: Vec<String> = args.collect();
     if args.is_empty() {
-        return Err(anyhow!("Usage: {argv0} INTERFACES... [CIDR...]"));
+        tracing::error!("Usage: {argv0} INTERFACES... [CIDR...]");
+        exit(1);
     }
 
     let mut networks: Vec<Ipv4Network> = Vec::new();
     for arg in &args {
-        let resolved = resolve_arg(arg).context("Failed to resolve argument")?;
-        networks.extend(resolved);
+        match resolve_arg(arg) {
+            Ok(resolved) => networks.extend(resolved),
+            Err(err) => fatal(err, "Failed to resolve argument"),
+        }
     }
 
     if networks.is_empty() {
-        return Err(anyhow!("No valid networks found"));
+        tracing::error!("No valid networks found");
+        exit(1);
     }
 
-    let self_ips: Vec<Ipv4Addr> =
-        local_ipv4_addrs().context("Failed to enumerate local addresses")?;
+    let self_ips: Vec<Ipv4Addr> = match local_ipv4_addrs() {
+        Ok(ips) => ips,
+        Err(err) => fatal(err, "Failed to enumerate local addresses"),
+    };
 
-    let listener = UdpSocket::bind(("0.0.0.0", wol::DEFAULT_PORT))
-        .map_err(|err| anyhow!("Cannot start server: {err}"))?;
-    let sender = sender_socket().context("Cannot start server")?;
+    let listener = match UdpSocket::bind(("0.0.0.0", wol::DEFAULT_PORT)) {
+        Ok(listener) => listener,
+        Err(err) => fatal(anyhow::Error::new(err), "Cannot start server"),
+    };
+    let sender = match sender_socket() {
+        Ok(sender) => sender,
+        Err(err) => fatal(err, "Cannot start server"),
+    };
 
     let mut buffer = [0u8; MAX_PACKET_SIZE];
     tracing::info!("Listening for WOL packets...");
@@ -120,9 +137,5 @@ fn run() -> anyhow::Result<()> {
 
 fn main() {
     setup_logger();
-
-    if let Err(err) = run() {
-        tracing::error!(error = %err, "{err:#}");
-        exit(1);
-    }
+    run();
 }

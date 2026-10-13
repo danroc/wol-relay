@@ -362,6 +362,7 @@ version = "0.1.13"
 dependencies = [
  "anyhow",
  "if-addrs",
+ "libc",
  "thiserror",
  "tracing",
  "tracing-subscriber",

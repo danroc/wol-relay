@@ -117,6 +117,14 @@ pub fn netmask_to_prefix(mask: Ipv4Addr) -> Option<u8> {
 
 /// Expands a CLI argument into one or more IPv4 networks.
 ///
+/// Reports whether a network interface with the given name exists, whether or
+/// not it has any addresses.
+fn interface_exists(name: &str) -> bool {
+    std::ffi::CString::new(name)
+        .map(|name| unsafe { libc::if_nametoindex(name.as_ptr()) } != 0)
+        .unwrap_or(false)
+}
+
 /// Arguments containing "/" are treated as CIDR notation; everything else is
 /// treated as a network interface name (Linux interface names cannot contain
 /// "/", so the heuristic is unambiguous).
@@ -128,7 +136,7 @@ pub fn resolve_arg(arg: &str) -> anyhow::Result<Vec<Ipv4Network>> {
 
     let ifaces = if_addrs::get_if_addrs()
         .map_err(|err| anyhow::anyhow!("resolve interface {arg:?}: {err}"))?;
-    if !ifaces.iter().any(|iface| iface.name == arg) {
+    if !interface_exists(arg) {
         anyhow::bail!("resolve interface {arg:?}: not found");
     }
 
@@ -363,6 +371,20 @@ mod tests {
     #[test]
     fn resolve_arg_rejects_unknown_interface() {
         assert!(resolve_arg("no-such-interface-xyz").is_err());
+    }
+
+    #[test]
+    fn resolve_arg_accepts_existing_interface_without_addresses() {
+        // An existing interface with no IP address must resolve to an empty
+        // list, not an error (Go: net.InterfaceByName succeeds and Addrs()
+        // is empty). gif0 exists on macOS without addresses; skip the test
+        // on platforms where it does not exist.
+        if unsafe { libc::if_nametoindex(c"gif0".as_ptr()) } == 0 {
+            eprintln!("skipping: no gif0 interface");
+            return;
+        }
+        let networks = resolve_arg("gif0").expect("existing interface must resolve");
+        assert!(networks.is_empty(), "{networks:?}");
     }
 
     #[test]
