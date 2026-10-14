@@ -7,6 +7,11 @@ and this project adheres to [Semantic Versioning](https://semver.org/spec/v2.0.0
 
 ## [Unreleased]
 
+## [0.2.0] - 2026-10-14
+
+> The service is now written in Rust. The Go implementation remains available on the
+> `release/0.1` branch, which receives security fixes only.
+
 ### Added
 
 - Add `--version` flag
@@ -19,7 +24,7 @@ and this project adheres to [Semantic Versioning](https://semver.org/spec/v2.0.0
 ### Changed
 
 - Rewrite the service in Rust
-- Log one flat JSON object per line with lowercase levels, matching the previous zerolog output
+- Log one flat JSON object per line with lowercase levels, matching the previous zerolog shape
 - Reword log messages to a consistent lowercase style and move all variable data into structured fields (`argument`, `port`, `networks`, `signal`, `error`)
 - Exit on unrecoverable receive errors so the supervisor can restart the relay
 - Cache Docker dependency builds with cargo-chef
@@ -214,7 +219,8 @@ and this project adheres to [Semantic Versioning](https://semver.org/spec/v2.0.0
 - Use logrus as logger ([8739a5b](https://github.com/danroc/wol-repeater/commit/8739a5b))
 - Remove `main` binary ([a9dc4e4](https://github.com/danroc/wol-repeater/commit/a9dc4e4))
 
-[Unreleased]: https://github.com/danroc/wol-relay/compare/v0.1.13...HEAD
+[Unreleased]: https://github.com/danroc/wol-relay/compare/v0.2.0...HEAD
+[0.2.0]: https://github.com/danroc/wol-relay/compare/v0.1.13...v0.2.0
 [0.1.13]: https://github.com/danroc/wol-relay/compare/v0.1.12...v0.1.13
 [0.1.12]: https://github.com/danroc/wol-relay/compare/v0.1.11...v0.1.12
 [0.1.11]: https://github.com/danroc/wol-relay/compare/v0.1.10...v0.1.11
