@@ -1,2 +1,4 @@
+target/
 dist/
-/target
+.superpowers/
+docs/superpowers/
