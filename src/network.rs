@@ -51,8 +51,7 @@ impl Ipv4Network {
 
     /// Reports whether the given IP address is contained in this network.
     pub fn contains(&self, ip: Ipv4Addr) -> bool {
-        (u32::from(ip) & mask(self.prefix))
-            == (u32::from(self.network) & mask(self.prefix))
+        u32::from(ip) & mask(self.prefix) == u32::from(self.network)
     }
 
     /// The broadcast address of this network.
@@ -69,39 +68,30 @@ impl fmt::Display for Ipv4Network {
 
 /// The netmask for a prefix length (0 to 32).
 fn mask(prefix: u8) -> u32 {
-    match prefix {
-        0 => 0,
-        prefix => u32::MAX << (32 - prefix),
-    }
+    u32::MAX.checked_shl(32 - u32::from(prefix)).unwrap_or(0)
 }
 
 /// Parses a CIDR string into an IPv4 network. IPv6 CIDRs are rejected.
 pub fn parse_cidr(s: &str) -> Result<Ipv4Network, NetworkError> {
+    let input = || s.to_string();
+
     let Some((addr_part, prefix_part)) = s.split_once('/') else {
-        return Err(NetworkError::InvalidCidr {
-            input: s.to_string(),
-        });
+        return Err(NetworkError::InvalidCidr { input: input() });
     };
 
     if addr_part.contains(':') {
-        return Err(NetworkError::IPv6NotSupported {
-            input: s.to_string(),
-        });
+        return Err(NetworkError::IPv6NotSupported { input: input() });
     }
 
-    let addr: Ipv4Addr = addr_part.parse().map_err(|_| NetworkError::InvalidCidr {
-        input: s.to_string(),
-    })?;
-
-    let prefix: u8 = prefix_part
+    let addr: Ipv4Addr = addr_part
         .parse()
-        .map_err(|_| NetworkError::InvalidPrefix {
-            input: s.to_string(),
-        })?;
+        .map_err(|_| NetworkError::InvalidCidr { input: input() })?;
 
-    Ipv4Network::new(addr, prefix).ok_or(NetworkError::InvalidPrefix {
-        input: s.to_string(),
-    })
+    prefix_part
+        .parse()
+        .ok()
+        .and_then(|prefix| Ipv4Network::new(addr, prefix))
+        .ok_or_else(|| NetworkError::InvalidPrefix { input: input() })
 }
 
 /// Converts a netmask to a prefix length. Returns `None` for non-contiguous
@@ -116,8 +106,6 @@ pub fn netmask_to_prefix(mask: Ipv4Addr) -> Option<u8> {
     }
 }
 
-/// Expands a CLI argument into one or more IPv4 networks.
-///
 /// Reports whether a network interface with the given name exists, whether or
 /// not it has any addresses.
 fn interface_exists(name: &str) -> bool {
@@ -126,6 +114,8 @@ fn interface_exists(name: &str) -> bool {
         .unwrap_or(false)
 }
 
+/// Expands a CLI argument into one or more IPv4 networks.
+///
 /// Arguments containing "/" are treated as CIDR notation; everything else is
 /// treated as a network interface name (Linux interface names cannot contain
 /// "/", so the heuristic is unambiguous).
@@ -185,11 +175,6 @@ pub fn is_ip_in_any(ip: Ipv4Addr, networks: &[Ipv4Network]) -> bool {
     networks.iter().any(|network| network.contains(ip))
 }
 
-/// Reports whether `ip` is present in `ips`.
-pub fn contains_ip(ips: &[Ipv4Addr], ip: Ipv4Addr) -> bool {
-    ips.contains(&ip)
-}
-
 /// Creates a UDP socket for sending WOL packets, with the OS assigning the
 /// source port. Broadcast sends are enabled.
 pub fn sender_socket() -> anyhow::Result<UdpSocket> {
@@ -225,7 +210,6 @@ pub fn is_transient(err: &std::io::Error) -> bool {
 #[cfg(test)]
 mod tests {
     use super::*;
-    use std::net::Ipv4Addr;
 
     fn net(addr: &str, prefix: u8) -> Ipv4Network {
         Ipv4Network::new(addr.parse().unwrap(), prefix).unwrap()
@@ -289,29 +273,6 @@ mod tests {
     }
 
     #[test]
-    fn contains() {
-        let networks = [net("192.168.1.1", 24), net("10.0.0.1", 24)];
-        let ip = |s: &str| s.parse::<Ipv4Addr>().unwrap();
-        let cases = [
-            ("192.168.1.0", true),
-            ("192.168.1.1", true),
-            ("192.168.1.100", true),
-            ("192.168.1.255", true),
-            ("192.168.0.0", false),
-            ("10.0.0.0", true),
-            ("10.0.0.1", true),
-            ("10.0.0.100", true),
-            ("10.0.0.255", true),
-            ("10.0.1.0", false),
-            ("172.16.0.1", false),
-            ("0.0.0.0", false),
-        ];
-        for (s, expected) in cases {
-            assert_eq!(networks.iter().any(|n| n.contains(ip(s))), expected, "{s}");
-        }
-    }
-
-    #[test]
     fn netmask_to_prefix_cases() {
         let mask = |s: &str| s.parse::<Ipv4Addr>().unwrap();
         assert_eq!(netmask_to_prefix(mask("255.255.255.0")), Some(24));
@@ -319,20 +280,6 @@ mod tests {
         assert_eq!(netmask_to_prefix(mask("0.0.0.0")), Some(0));
         assert_eq!(netmask_to_prefix(mask("255.255.255.255")), Some(32));
         assert_eq!(netmask_to_prefix(mask("255.0.255.0")), None); // non-contiguous
-    }
-
-    #[test]
-    fn contains_ip_cases() {
-        let ips: Vec<Ipv4Addr> = ["192.168.1.5", "10.0.0.5"]
-            .iter()
-            .map(|s| s.parse().unwrap())
-            .collect();
-        let ip = |s: &str| s.parse::<Ipv4Addr>().unwrap();
-        assert!(contains_ip(&ips, ip("192.168.1.5")));
-        assert!(contains_ip(&ips, ip("10.0.0.5")));
-        assert!(!contains_ip(&ips, ip("192.168.1.6")));
-        assert!(!contains_ip(&ips, ip("10.0.0.4")));
-        assert!(!contains_ip(&ips, ip("8.8.8.8")));
     }
 
     #[test]

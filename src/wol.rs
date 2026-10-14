@@ -2,10 +2,10 @@
 
 /// Wake-on-LAN constants.
 pub const DEFAULT_PORT: u16 = 9;
-pub const PACKET_SIZE: usize = 102;
 pub const HEADER_SIZE: usize = 6;
 pub const MAC_SIZE: usize = 6;
 pub const MAC_REPEAT: usize = 16;
+pub const PACKET_SIZE: usize = HEADER_SIZE + MAC_SIZE * MAC_REPEAT;
 
 /// A MAC-48 address.
 pub type Mac = [u8; MAC_SIZE];
@@ -35,8 +35,8 @@ pub fn mac_to_string(mac: &Mac) -> String {
 /// Builds a Wake-on-LAN packet with the given MAC address.
 pub fn build_packet(mac: Mac) -> Packet {
     let mut packet = [0xffu8; PACKET_SIZE];
-    for (i, byte) in packet.iter_mut().enumerate().skip(HEADER_SIZE) {
-        *byte = mac[(i - HEADER_SIZE) % MAC_SIZE];
+    for chunk in packet[HEADER_SIZE..].as_chunks_mut::<MAC_SIZE>().0 {
+        *chunk = mac;
     }
     packet
 }
@@ -53,17 +53,10 @@ pub fn parse_packet(packet: &[u8]) -> Result<Mac, WolError> {
     }
 
     // The MAC address should be the same MAC address repeated 16 times.
-    let mac: Mac = packet[HEADER_SIZE..HEADER_SIZE + MAC_SIZE]
-        .try_into()
-        .expect("slice length equals MAC_SIZE");
-    for repeat in 1..MAC_REPEAT {
-        let start = HEADER_SIZE + MAC_SIZE * repeat;
-        let candidate: &Mac = packet[start..start + MAC_SIZE]
-            .try_into()
-            .expect("slice length equals MAC_SIZE");
-        if candidate != &mac {
-            return Err(WolError::InvalidMac);
-        }
+    let (macs, _) = packet[HEADER_SIZE..].as_chunks::<MAC_SIZE>();
+    let mac = macs[0];
+    if macs.iter().any(|&candidate| candidate != mac) {
+        return Err(WolError::InvalidMac);
     }
 
     Ok(mac)

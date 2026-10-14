@@ -14,14 +14,15 @@ use clap::Parser;
 use wol_relay::cli::Cli;
 use wol_relay::logging;
 use wol_relay::network::{
-    self, Ipv4Network, MAX_PACKET_SIZE, contains_ip, is_ip_in_any, local_ipv4_addrs,
-    resolve_arg, send_wol_packet, sender_socket,
+    self, Ipv4Network, MAX_PACKET_SIZE, is_ip_in_any, local_ipv4_addrs, resolve_arg,
+    send_wol_packet, sender_socket,
 };
 use wol_relay::wol;
 
 /// Why the process is stopping.
 enum Stop {
-    /// SIGTERM/SIGINT received; exit code carries the signal number.
+    /// SIGTERM/SIGINT received; the signal number is logged and the process
+    /// exits cleanly.
     Signal(i32),
     /// The reader thread hit an unrecoverable error; exit nonzero so the
     /// supervisor restarts the whole instance.
@@ -38,8 +39,8 @@ fn fatal(msg: &str) -> ! {
 
 /// Logs a fatal error with the given message and exits. The message carries
 /// the log message and `error` carries the full error chain.
-fn fatal_error(err: anyhow::Error, message: &str) -> ! {
-    log::error!(error = format!("{err:#}"); "{message}");
+fn fatal_error(err: impl Into<anyhow::Error>, message: &str) -> ! {
+    log::error!(error = format!("{:#}", err.into()); "{message}");
     exit(1)
 }
 
@@ -89,9 +90,16 @@ fn wait_for_stop(stop_rx: mpsc::Receiver<Stop>) -> ! {
 fn resolve_networks(targets: &[String]) -> Vec<Ipv4Network> {
     let mut networks = Vec::new();
     for target in targets {
-        match resolve_arg(target) {
-            Ok(resolved) => networks.extend(resolved),
-            Err(err) => fatal_error(err, "Failed to resolve argument"),
+        let resolved = resolve_arg(target)
+            .unwrap_or_else(|err| fatal_error(err, "Failed to resolve argument"));
+
+        // An interface with several addresses (e.g. loopback aliases) can
+        // resolve to the same network more than once; each network only needs
+        // one relay.
+        for network in resolved {
+            if !networks.contains(&network) {
+                networks.push(network);
+            }
         }
     }
 
@@ -99,36 +107,66 @@ fn resolve_networks(targets: &[String]) -> Vec<Ipv4Network> {
         fatal("No valid networks found");
     }
 
-    // An interface with several addresses (e.g. loopback aliases) can resolve
-    // to the same network more than once; each network only needs one relay.
-    let mut seen = Vec::new();
-    networks.retain(|network| {
-        if seen.contains(network) {
-            false
-        } else {
-            seen.push(*network);
-            true
-        }
-    });
-
     networks
+}
+
+/// Relays a WOL packet for `mac` to every monitored network other than the
+/// source's own, logging the outcome for each.
+fn relay_packet(
+    sender: &UdpSocket,
+    networks: &[Ipv4Network],
+    source_ip: Ipv4Addr,
+    mac: wol::Mac,
+) {
+    let target_mac = wol::mac_to_string(&mac);
+
+    for network in networks {
+        // Don't send the WOL packet to the same network as the source IP to
+        // avoid broadcasting the packet a second time on the original network.
+        if network.contains(source_ip) {
+            continue;
+        }
+
+        match send_wol_packet(sender, *network, mac) {
+            Ok(()) => log::info!(
+                source_ip:display = source_ip,
+                target_network:display = network,
+                target_mac = target_mac;
+                "WOL packet relayed successfully"
+            ),
+
+            Err(err) if network::is_transient(&err) => log::debug!(
+                source_ip:display = source_ip,
+                target_network:display = network;
+                "send queue full, skipping"
+            ),
+
+            Err(err) => log::warn!(
+                source_ip:display = source_ip,
+                target_network:display = network,
+                target_mac = target_mac,
+                error:display = err;
+                "Failed to relay WOL packet"
+            ),
+        }
+    }
 }
 
 /// Blocks forever reading WOL datagrams on `listener` and relaying them to
 /// every monitored network other than the source's own. On a hard receive
-/// error it logs, notifies via `errors`, and returns.
+/// error it logs, sends `Stop::ReaderDied` on `stop`, and returns.
 ///
 /// * `listener` — the relay's receive socket (bound to `0.0.0.0`).
 /// * `sender` — the relay's send socket (broadcast enabled).
 /// * `networks` — monitored networks; sources outside them are skipped.
 /// * `self_ips` — this host's addresses; packets from them are skipped.
-/// * `errors` — signalled once before returning on a hard receive error.
+/// * `stop` — signalled once before returning on a hard receive error.
 fn reader_loop(
     listener: UdpSocket,
     sender: UdpSocket,
     networks: Vec<Ipv4Network>,
     self_ips: Vec<Ipv4Addr>,
-    errors: mpsc::Sender<()>,
+    stop: mpsc::Sender<Stop>,
 ) {
     let mut buffer = [0u8; MAX_PACKET_SIZE];
 
@@ -140,7 +178,7 @@ fn reader_loop(
 
             Err(err) => {
                 log::error!(error:display = err; "Cannot read WOL packet");
-                let _ = errors.send(());
+                let _ = stop.send(Stop::ReaderDied);
                 return;
             }
         };
@@ -164,7 +202,7 @@ fn reader_loop(
         }
 
         // Skip packets from this host to prevent relay loops.
-        if contains_ip(&self_ips, source_ip) {
+        if self_ips.contains(&source_ip) {
             log::debug!(
                 source_ip:display = source_ip;
                 "skipping packet from this host"
@@ -185,38 +223,7 @@ fn reader_loop(
             }
         };
 
-        for network in &networks {
-            // Don't send the WOL packet to the same network as the source IP
-            // to avoid broadcasting the packet a second time on the original
-            // network.
-            if network.contains(source_ip) {
-                continue;
-            }
-
-            let target_mac = wol::mac_to_string(&mac);
-            match send_wol_packet(&sender, *network, mac) {
-                Ok(()) => log::info!(
-                    source_ip:display = source_ip,
-                    target_network:display = network,
-                    target_mac = target_mac;
-                    "WOL packet relayed successfully"
-                ),
-
-                Err(err) if network::is_transient(&err) => log::debug!(
-                    source_ip:display = source_ip,
-                    target_network:display = network;
-                    "send queue full, skipping"
-                ),
-
-                Err(err) => log::warn!(
-                    source_ip:display = source_ip,
-                    target_network:display = network,
-                    target_mac = target_mac,
-                    error:display = err;
-                    "Failed to relay WOL packet"
-                ),
-            }
-        }
+        relay_packet(&sender, &networks, source_ip, mac);
     }
 }
 
@@ -230,10 +237,8 @@ fn main() {
     let self_ips: Vec<Ipv4Addr> = local_ipv4_addrs()
         .unwrap_or_else(|err| fatal_error(err, "Failed to enumerate local addresses"));
 
-    let listener =
-        UdpSocket::bind(("0.0.0.0", wol::DEFAULT_PORT)).unwrap_or_else(|err| {
-            fatal_error(anyhow::Error::new(err), "Cannot start server")
-        });
+    let listener = UdpSocket::bind(("0.0.0.0", wol::DEFAULT_PORT))
+        .unwrap_or_else(|err| fatal_error(err, "Cannot start server"));
     let sender =
         sender_socket().unwrap_or_else(|err| fatal_error(err, "Cannot start server"));
 
@@ -244,20 +249,10 @@ fn main() {
     );
 
     let (stop_tx, stop_rx) = mpsc::channel::<Stop>();
-    let (errors_tx, errors_rx) = mpsc::channel::<()>();
 
-    spawn_thread("reader", move || {
-        reader_loop(listener, sender, networks, self_ips, errors_tx);
-    });
-
-    // Bridge reader-thread deaths into the stop channel.
-    spawn_thread("error-bridge", {
+    spawn_thread("reader", {
         let stop_tx = stop_tx.clone();
-        move || {
-            if errors_rx.recv().is_ok() {
-                let _ = stop_tx.send(Stop::ReaderDied);
-            }
-        }
+        move || reader_loop(listener, sender, networks, self_ips, stop_tx)
     });
 
     spawn_signal_thread(stop_tx);
