@@ -1,8 +1,8 @@
-//! Wake-on-LAN relay that listens for WOL packets on specified network
-//! interfaces and relays them to other networks.
+//! Wake-on-LAN relay that listens for WOL packets on specified network interfaces and
+//! relays them to other networks.
 //!
-//! Entry point: parses the CLI, sets up logging, spawns the relay reader
-//! thread and the signal thread, and waits for shutdown.
+//! Entry point: parses the CLI, sets up logging, spawns the relay reader thread and the
+//! signal thread, and waits for shutdown.
 
 use std::net::{Ipv4Addr, SocketAddr, UdpSocket};
 use std::process::exit;
@@ -21,11 +21,11 @@ use wol_relay::wol;
 
 /// Why the process is stopping.
 enum Stop {
-    /// SIGTERM/SIGINT received; the signal number is logged and the process
-    /// exits cleanly.
+    /// SIGTERM/SIGINT received; the signal number is logged and the process exits
+    /// cleanly.
     Signal(i32),
-    /// The reader thread hit an unrecoverable error; exit nonzero so the
-    /// supervisor restarts the whole instance.
+    /// The reader thread hit an unrecoverable error; exit nonzero so the supervisor
+    /// restarts the whole instance.
     ReaderDied,
 }
 
@@ -37,8 +37,8 @@ fn fatal(msg: &str) -> ! {
     exit(1);
 }
 
-/// Logs a fatal error with the given message and exits. The message carries
-/// the log message and `error` carries the full error chain.
+/// Logs a fatal error with the given message and exits. The message carries the log
+/// message and `error` carries the full error chain.
 fn fatal_error(err: impl Into<anyhow::Error>, message: &str) -> ! {
     log::error!(error = format!("{:#}", err.into()); "{message}");
     exit(1)
@@ -83,8 +83,8 @@ fn wait_for_stop(stop_rx: mpsc::Receiver<Stop>) -> ! {
     }
 }
 
-/// Resolve every CLI target to its monitored IPv4 networks, dropping
-/// duplicates while preserving order.
+/// Resolve every CLI target to its monitored IPv4 networks, dropping duplicates while
+/// preserving order.
 ///
 /// Aborts on the first unknown target.
 fn resolve_networks(targets: &[String]) -> Vec<Ipv4Network> {
@@ -93,9 +93,8 @@ fn resolve_networks(targets: &[String]) -> Vec<Ipv4Network> {
         let resolved = resolve_arg(target)
             .unwrap_or_else(|err| fatal_error(err, "Failed to resolve argument"));
 
-        // An interface with several addresses (e.g. loopback aliases) can
-        // resolve to the same network more than once; each network only needs
-        // one relay.
+        // An interface with several addresses (e.g. loopback aliases) can resolve to
+        // the same network more than once; each network only needs one relay.
         for network in resolved {
             if !networks.contains(&network) {
                 networks.push(network);
@@ -110,8 +109,8 @@ fn resolve_networks(targets: &[String]) -> Vec<Ipv4Network> {
     networks
 }
 
-/// Relays a WOL packet for `mac` to every monitored network other than the
-/// source's own, logging the outcome for each.
+/// Relays a WOL packet for `mac` to every monitored network other than the source's
+/// own, logging the outcome for each.
 fn relay_packet(
     sender: &UdpSocket,
     networks: &[Ipv4Network],
@@ -121,8 +120,8 @@ fn relay_packet(
     let target_mac = wol::mac_to_string(&mac);
 
     for network in networks {
-        // Don't send the WOL packet to the same network as the source IP to
-        // avoid broadcasting the packet a second time on the original network.
+        // Don't send the WOL packet to the same network as the source IP to avoid
+        // broadcasting the packet a second time on the original network.
         if network.contains(source_ip) {
             continue;
         }
@@ -152,9 +151,9 @@ fn relay_packet(
     }
 }
 
-/// Blocks forever reading WOL datagrams on `listener` and relaying them to
-/// every monitored network other than the source's own. On a hard receive
-/// error it logs, sends `Stop::ReaderDied` on `stop`, and returns.
+/// Blocks forever reading WOL datagrams on `listener` and relaying them to every
+/// monitored network other than the source's own. On a hard receive error it logs,
+/// sends `Stop::ReaderDied` on `stop`, and returns.
 ///
 /// * `listener` — the relay's receive socket (bound to `0.0.0.0`).
 /// * `sender` — the relay's send socket (broadcast enabled).
@@ -239,6 +238,7 @@ fn main() {
 
     let listener = UdpSocket::bind(("0.0.0.0", wol::DEFAULT_PORT))
         .unwrap_or_else(|err| fatal_error(err, "Cannot start server"));
+
     let sender =
         sender_socket().unwrap_or_else(|err| fatal_error(err, "Cannot start server"));
 
@@ -256,6 +256,5 @@ fn main() {
     });
 
     spawn_signal_thread(stop_tx);
-
     wait_for_stop(stop_rx);
 }

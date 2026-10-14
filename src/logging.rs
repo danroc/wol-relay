@@ -33,8 +33,8 @@ fn resolve(format: LogFormat, is_terminal: bool) -> LogFormat {
     }
 }
 
-/// A structured field value as JSON: numbers, booleans and `:serde` values (such
-/// as arrays) stay typed, the rest becomes a string.
+/// A structured field value as JSON: numbers, booleans and `:serde` values (such as
+/// arrays) stay typed, the rest becomes a string.
 fn to_json(value: &Value) -> Json {
     serde_json::to_value(value).unwrap_or_else(|_| Json::from(value.to_string()))
 }
@@ -77,8 +77,8 @@ fn needs_quotes(s: &str) -> bool {
     s.is_empty() || s.contains(|c: char| c.is_whitespace() || c == '"' || c == '=')
 }
 
-/// The `{"time":..,"level":..,"message":..` prefix of a JSON log line, with a
-/// lowercase level.
+/// The `{"time":..,"level":..,"message":..` prefix of a JSON log line, with a lowercase
+/// level.
 fn json_prefix(time: &str, level: log::Level, message: &str) -> String {
     let q = |s: &str| Json::from(s);
     format!(

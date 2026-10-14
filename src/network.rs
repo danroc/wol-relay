@@ -27,8 +27,8 @@ pub enum NetworkError {
 }
 
 impl Ipv4Network {
-    /// Creates a network from an address and prefix length, masking off host
-    /// bits. Returns `None` if the prefix length is greater than 32.
+    /// Creates a network from an address and prefix length, masking off host bits.
+    /// Returns `None` if the prefix length is greater than 32.
     pub fn new(addr: Ipv4Addr, prefix: u8) -> Option<Self> {
         if prefix > 32 {
             return None;
@@ -94,8 +94,7 @@ pub fn parse_cidr(s: &str) -> Result<Ipv4Network, NetworkError> {
         .ok_or_else(|| NetworkError::InvalidPrefix { input: input() })
 }
 
-/// Converts a netmask to a prefix length. Returns `None` for non-contiguous
-/// masks.
+/// Converts a netmask to a prefix length. Returns `None` for non-contiguous masks.
 pub fn netmask_to_prefix(mask: Ipv4Addr) -> Option<u8> {
     let mask = u32::from(mask);
     let prefix = mask.leading_ones() as u8;
@@ -106,8 +105,8 @@ pub fn netmask_to_prefix(mask: Ipv4Addr) -> Option<u8> {
     }
 }
 
-/// Reports whether a network interface with the given name exists, whether or
-/// not it has any addresses.
+/// Reports whether a network interface with the given name exists, whether or not it
+/// has any addresses.
 fn interface_exists(name: &str) -> bool {
     std::ffi::CString::new(name)
         .map(|name| unsafe { libc::if_nametoindex(name.as_ptr()) } != 0)
@@ -116,9 +115,9 @@ fn interface_exists(name: &str) -> bool {
 
 /// Expands a CLI argument into one or more IPv4 networks.
 ///
-/// Arguments containing "/" are treated as CIDR notation; everything else is
-/// treated as a network interface name (Linux interface names cannot contain
-/// "/", so the heuristic is unambiguous).
+/// Arguments containing "/" are treated as CIDR notation; everything else is treated as
+/// a network interface name (Linux interface names cannot contain "/", so the heuristic
+/// is unambiguous).
 pub fn resolve_arg(arg: &str) -> anyhow::Result<Vec<Ipv4Network>> {
     if arg.contains('/') {
         let network = parse_cidr(arg)?;
@@ -141,12 +140,12 @@ pub fn resolve_arg(arg: &str) -> anyhow::Result<Vec<Ipv4Network>> {
         .collect())
 }
 
-/// An interface address and its netmask as a network, or `None` when the
-/// netmask is unknown or unusable.
+/// An interface address and its netmask as a network, or `None` when the netmask is
+/// unknown or unusable.
 ///
-/// A 0.0.0.0 netmask means getifaddrs does not know it (macOS secondary
-/// addresses); treating it as a real /0 would monitor every IPv4 source, so
-/// those addresses are skipped. Non-contiguous netmasks are skipped too.
+/// A 0.0.0.0 netmask means getifaddrs does not know it (macOS secondary addresses);
+/// treating it as a real /0 would monitor every IPv4 source, so those addresses are
+/// skipped. Non-contiguous netmasks are skipped too.
 fn addr_to_network(ip: Ipv4Addr, netmask: Ipv4Addr) -> Option<Ipv4Network> {
     if netmask == Ipv4Addr::UNSPECIFIED {
         return None;
@@ -156,8 +155,8 @@ fn addr_to_network(ip: Ipv4Addr, netmask: Ipv4Addr) -> Option<Ipv4Network> {
 
 /// Returns all IPv4 addresses assigned to local network interfaces.
 ///
-/// Used for self-detection so loop prevention works regardless of whether
-/// targets were specified as interface names or CIDRs.
+/// Used for self-detection so loop prevention works regardless of whether targets were
+/// specified as interface names or CIDRs.
 pub fn local_ipv4_addrs() -> anyhow::Result<Vec<Ipv4Addr>> {
     let ifaces = if_addrs::get_if_addrs()?;
     Ok(ifaces
@@ -169,14 +168,13 @@ pub fn local_ipv4_addrs() -> anyhow::Result<Vec<Ipv4Addr>> {
         .collect())
 }
 
-/// Checks if the given IP address is contained in any of the provided
-/// networks.
+/// Checks if the given IP address is contained in any of the provided networks.
 pub fn is_ip_in_any(ip: Ipv4Addr, networks: &[Ipv4Network]) -> bool {
     networks.iter().any(|network| network.contains(ip))
 }
 
-/// Creates a UDP socket for sending WOL packets, with the OS assigning the
-/// source port. Broadcast sends are enabled.
+/// Creates a UDP socket for sending WOL packets, with the OS assigning the source port.
+/// Broadcast sends are enabled.
 pub fn sender_socket() -> anyhow::Result<UdpSocket> {
     let socket = UdpSocket::bind("0.0.0.0:0")
         .map_err(|err| anyhow::anyhow!("cannot create sender socket: {err}"))?;

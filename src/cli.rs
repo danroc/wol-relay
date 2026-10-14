@@ -26,8 +26,8 @@ pub struct Cli {
     )]
     pub log_format: LogFormat,
 
-    /// Networks or interfaces to relay between, by interface name or CIDR
-    /// notation (comma-separated when set via env)
+    /// Networks or interfaces to relay between, by interface name or CIDR notation
+    /// (comma-separated when set via env)
     #[arg(required = true, env = "WOL_RELAY_TARGETS", value_delimiter = ',')]
     pub targets: Vec<String>,
 }
@@ -68,8 +68,8 @@ mod tests {
     use super::*;
     use clap::error::ErrorKind;
 
-    /// Serializes tests: parsing reads the process-global environment, which
-    /// the env tests mutate.
+    /// Serializes tests: parsing reads the process-global environment, which the env
+    /// tests mutate.
     static ENV_LOCK: Mutex<()> = Mutex::new(());
 
     fn parse<const N: usize>(args: [&str; N]) -> Result<Cli, clap::Error> {
