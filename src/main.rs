@@ -29,36 +29,34 @@ enum Stop {
     ReaderDied,
 }
 
-/// Log `msg` at error level and exit with status 1.
+/// Logs a structured error record and exits with status 1.
 ///
-/// Must only be called after the logger is initialized.
-fn fatal(msg: &str) -> ! {
-    log::error!("{msg}");
-    exit(1);
-}
-
-/// Logs a fatal error with the given message and exits. The message carries the log
-/// message and `error` carries the full error chain.
-fn fatal_error(err: impl Into<anyhow::Error>, message: &str) -> ! {
-    log::error!(error = format!("{:#}", err.into()); "{message}");
-    exit(1)
+/// Takes the same arguments as `log::error!`: optional `key = value` fields, then
+/// `;` and the message. Must only be used after the logger is initialized.
+macro_rules! fatal {
+    ($($arg:tt)+) => {{
+        log::error!($($arg)+);
+        exit(1)
+    }};
 }
 
 /// Spawn a named thread; a spawn failure is fatal.
 fn spawn_thread(name: &str, f: impl FnOnce() + Send + 'static) {
-    thread::Builder::new()
-        .name(name.to_owned())
-        .spawn(f)
-        .unwrap_or_else(|err| fatal(&format!("failed to spawn {name} thread: {err}")));
+    if let Err(err) = thread::Builder::new().name(name.to_owned()).spawn(f) {
+        fatal!(thread = name, error:display = err; "failed to spawn thread");
+    }
 }
 
 /// Forward SIGTERM/SIGINT to the stop channel.
 fn spawn_signal_thread(stop_tx: mpsc::Sender<Stop>) {
-    let mut signals = signal_hook::iterator::Signals::new([
+    let signals = signal_hook::iterator::Signals::new([
         signal_hook::consts::SIGTERM,
         signal_hook::consts::SIGINT,
-    ])
-    .unwrap_or_else(|err| fatal(&format!("failed to install signal handlers: {err}")));
+    ]);
+    let mut signals = match signals {
+        Ok(signals) => signals,
+        Err(err) => fatal!(error:display = err; "failed to install signal handlers"),
+    };
 
     spawn_thread("signals", move || {
         for sig in signals.forever() {
@@ -73,13 +71,11 @@ fn spawn_signal_thread(stop_tx: mpsc::Sender<Stop>) {
 fn wait_for_stop(stop_rx: mpsc::Receiver<Stop>) -> ! {
     match stop_rx.recv() {
         Ok(Stop::Signal(sig)) => {
-            log::info!(signal = sig; "shutting down");
+            log::info!(signal = sig; "stopping on signal");
             exit(0);
         }
 
-        Ok(Stop::ReaderDied) | Err(_) => {
-            fatal("the reader thread failed; exiting");
-        }
+        Ok(Stop::ReaderDied) | Err(_) => fatal!("stopping: reader thread failed"),
     }
 }
 
@@ -90,8 +86,16 @@ fn wait_for_stop(stop_rx: mpsc::Receiver<Stop>) -> ! {
 fn resolve_networks(targets: &[String]) -> Vec<Ipv4Network> {
     let mut networks = Vec::new();
     for target in targets {
-        let resolved = resolve_arg(target)
-            .unwrap_or_else(|err| fatal_error(err, "Failed to resolve argument"));
+        let resolved = match resolve_arg(target) {
+            Ok(resolved) => resolved,
+            Err(err) => {
+                fatal!(
+                    argument = target.as_str(),
+                    error:display = err;
+                    "failed to resolve argument"
+                )
+            }
+        };
 
         // An interface with several addresses (e.g. loopback aliases) can resolve to
         // the same network more than once; each network only needs one relay.
@@ -103,7 +107,7 @@ fn resolve_networks(targets: &[String]) -> Vec<Ipv4Network> {
     }
 
     if networks.is_empty() {
-        fatal("No valid networks found");
+        fatal!(arguments:serde = targets; "no valid networks found");
     }
 
     networks
@@ -131,13 +135,15 @@ fn relay_packet(
                 source_ip:display = source_ip,
                 target_network:display = network,
                 target_mac = target_mac;
-                "WOL packet relayed successfully"
+                "relayed packet"
             ),
 
             Err(err) if network::is_transient(&err) => log::debug!(
                 source_ip:display = source_ip,
-                target_network:display = network;
-                "send queue full, skipping"
+                target_network:display = network,
+                target_mac = target_mac,
+                error:display = err;
+                "skipped relay: send queue full"
             ),
 
             Err(err) => log::warn!(
@@ -145,7 +151,7 @@ fn relay_packet(
                 target_network:display = network,
                 target_mac = target_mac,
                 error:display = err;
-                "Failed to relay WOL packet"
+                "failed to relay packet"
             ),
         }
     }
@@ -176,7 +182,7 @@ fn reader_loop(
             Err(err) if network::is_transient(&err) => continue,
 
             Err(err) => {
-                log::error!(error:display = err; "Cannot read WOL packet");
+                log::error!(error:display = err; "failed to receive packet");
                 let _ = stop.send(Stop::ReaderDied);
                 return;
             }
@@ -185,8 +191,11 @@ fn reader_loop(
         // An IPv4 socket only yields IPv4 sources; IPv6 is unreachable.
         let source_ip = match source {
             SocketAddr::V4(addr) => *addr.ip(),
-            SocketAddr::V6(_) => {
-                log::debug!("skipping packet with IPv6 source address");
+            SocketAddr::V6(addr) => {
+                log::debug!(
+                    source_ip:display = addr.ip();
+                    "skipped packet: IPv6 source"
+                );
                 continue;
             }
         };
@@ -195,7 +204,7 @@ fn reader_loop(
         if !is_ip_in_any(source_ip, &networks) {
             log::debug!(
                 source_ip:display = source_ip;
-                "skipping packet from unmonitored network"
+                "skipped packet: unmonitored network"
             );
             continue;
         }
@@ -204,7 +213,7 @@ fn reader_loop(
         if self_ips.contains(&source_ip) {
             log::debug!(
                 source_ip:display = source_ip;
-                "skipping packet from this host"
+                "skipped packet: sent by this host"
             );
             continue;
         }
@@ -216,7 +225,7 @@ fn reader_loop(
                     source_ip:display = source_ip,
                     packet_size = n as u64,
                     error:display = err;
-                    "Failed to parse WOL packet"
+                    "failed to parse packet"
                 );
                 continue;
             }
@@ -233,19 +242,32 @@ fn main() {
 
     let networks = resolve_networks(&cli.targets);
 
-    let self_ips: Vec<Ipv4Addr> = local_ipv4_addrs()
-        .unwrap_or_else(|err| fatal_error(err, "Failed to enumerate local addresses"));
+    let self_ips = match local_ipv4_addrs() {
+        Ok(ips) => ips,
+        Err(err) => {
+            fatal!(error = format!("{err:#}"); "failed to list local addresses")
+        }
+    };
 
-    let listener = UdpSocket::bind(("0.0.0.0", wol::DEFAULT_PORT))
-        .unwrap_or_else(|err| fatal_error(err, "Cannot start server"));
+    let listener = match UdpSocket::bind(("0.0.0.0", wol::DEFAULT_PORT)) {
+        Ok(listener) => listener,
+        Err(err) => fatal!(
+            port = wol::DEFAULT_PORT,
+            error:display = err;
+            "failed to bind listener"
+        ),
+    };
 
-    let sender =
-        sender_socket().unwrap_or_else(|err| fatal_error(err, "Cannot start server"));
+    let sender = match sender_socket() {
+        Ok(sender) => sender,
+        Err(err) => fatal!(error = format!("{err:#}"); "failed to create sender"),
+    };
 
     let network_names: Vec<String> = networks.iter().map(|n| n.to_string()).collect();
     log::info!(
+        port = wol::DEFAULT_PORT,
         networks:serde = network_names;
-        "Listening for WOL packets..."
+        "listening for packets"
     );
 
     let (stop_tx, stop_rx) = mpsc::channel::<Stop>();

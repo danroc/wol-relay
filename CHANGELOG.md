@@ -20,6 +20,7 @@ and this project adheres to [Semantic Versioning](https://semver.org/spec/v2.0.0
 
 - Rewrite the service in Rust
 - Log one flat JSON object per line with lowercase levels, matching the previous zerolog output
+- Reword log messages to a consistent lowercase style and move all variable data into structured fields (`argument`, `port`, `networks`, `signal`, `error`)
 - Exit on unrecoverable receive errors so the supervisor can restart the relay
 - Cache Docker dependency builds with cargo-chef
 - Ignore interface addresses with unknown netmasks (macOS secondary addresses)
