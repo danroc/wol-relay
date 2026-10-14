@@ -1,3 +1,4 @@
+target/
 dist/
-coverage.out
-coverage.xml
+.superpowers/
+docs/superpowers/
