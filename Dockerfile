@@ -4,7 +4,7 @@
 # Chef — Rust toolchain plus cargo-chef, shared by the planner and build stages.
 # --------------------------------------------------------------------------------------
 
-FROM rust:1-alpine@sha256:0cce0a5e0e8ba67b455257a3a02a1d99005f382748789d6464460028810f1627 AS chef
+FROM rust:1-alpine@sha256:020ae58708330f028718219a3a90ac05c37f2de43de5a4ca212b293324aa52bd AS chef
 
 # musl-dev: linker and headers for a static musl target
 RUN apk add --no-cache musl-dev \
